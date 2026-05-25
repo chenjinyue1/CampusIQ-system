@@ -25,7 +25,6 @@
 - [开发指南](#开发指南)
 - [故障排除](#故障排除)
 - [文档](#文档)
-- [联系方式](#联系方式)
 
 ## 项目简介
 
@@ -35,7 +34,6 @@
 
 - **智能问答** 💬：基于 RAG 技术，结合文档检索和大语言模型，提供精准的问答体验
 - **会话持久化** 💾：使用 MySQL 存储会话历史，支持长期保存和回溯
-- **多语言支持** 🌐：前端集成 i18n，支持中英文界面切换
 - **文档管理** 📄：前端可视化文档上传、管理(查看细致的切片、原文档等信息)
 - **安全性** ⛑️：对不同用户的知识库进行隔离，RAG检索只能检索到自己上传的文档
 - **微服务架构** 🏗️：分离的用户服务和对话服务，易于扩展和维护
@@ -45,11 +43,6 @@
 
 ```mermaid
 flowchart TD
-    subgraph "前端层"
-        A["用户界面 (Vue 3)"] -->|发送查询| B["API请求 (Axios)"]
-        C["会话管理 (Pinia)"] -->|状态管理| B
-        D["用户认证 (Vue Router)"] -->|路由守卫| B
-    end
 
     subgraph "API路由层"
         B -->|REST API| E["聊天路由 (FastAPI)"]
@@ -79,10 +72,6 @@ flowchart TD
         M -->|重排序模型| T["Qwen3-Reranker-0.6B"]
     end
 
-    subgraph "用户服务"
-        U["Django用户服务"] -->|认证授权| F
-        U -->|用户管理| V["MySQL用户数据库"]
-    end
 ```
 
 ## 项目演示
@@ -107,13 +96,12 @@ flowchart TD
 |------|----------|
 | Python | 3.12+ |
 | uv | 0.11.9   |
-| Node.js | 16+ |
 
 ### 克隆项目
 
 ```bash
-git clone https://github.com/RMA-MUN/LangChain-RAG-FastAPI-Service.git
-cd LangChain-RAG-FastAPI-Service
+git clone https://github.com/chenjinyue1/CampusIQ-system.git
+cd CampusIQ-system
 ```
 
 ### 安装依赖
@@ -136,7 +124,7 @@ pnpm install
 
 #### 创建后端环境变量文件
 
-在 `backend` 目录下创建 `.env` 文件，参考 `.env.example` 文件填写配置：
+在 `backend` 目录下创建 `.env` 文件
 
 ```env
 # ==================== LLM 大模型配置 ====================
@@ -243,7 +231,6 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 |------|------|------|
 | 后端服务 | `cd backend && uvicorn main:app --reload` | 8000 |
 | 前端服务 | `cd front && npm run dev` | 3000 |
-| 用户服务 | `cd DjangoUserService && uv run python manage.py runserver 8001` | 8001 |
 | MySQL | `net start mysql` | 3306 |
 | Redis | `redis-server` 或 `net start redis` | 6379 |
 | Ollama | `ollama serve` | 11434 |
@@ -257,7 +244,6 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 | FastAPI | 高性能异步 Web 框架 |
 | LangChain | 大语言模型应用开发框架 |
 | ChromaDB | 轻量级向量数据库 |
-| Django | 用户认证和管理系统 |
 | MySQL | 关系型数据库 |
 | Redis | 缓存数据库 |
 | DashScope API | 大语言模型服务 |
@@ -295,7 +281,7 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 │   ├── src/                  # 源代码
 │   ├── public/               # 静态资源
 │   └── package.json          # 前端依赖配置
-├── DjangoUserService/        # Django 用户服务
+├── 
 └── README.md                 # 项目说明文档
 ```
 
@@ -305,11 +291,6 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 
 - **[API 规范](./backend/openapi.json)**：后端 OpenAPI 规范文件
 - **[交互式文档](http://localhost:8000/docs)**：启动服务后访问自动生成的交互式文档
-
-### Django 用户服务 API
-
-- **[API 文档](./DjangoUserService/api.md)**：详细的用户服务 API 文档
-- **[交互式文档](http://localhost:8001/api/)**：启动服务后访问用户服务 API 文档
 
 ## 开发指南
 
@@ -344,5 +325,4 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 - **[ModelScope 模型配置](./docs/modelscope_model.md)**：详细的模型下载和配置说明
 - **[故障排除](./docs/troubleshooting.md)**：常见问题和解决方案
 - **[API 文档](./backend/openapi.json)**：后端 API 接口文档
-- **[用户服务 API](./DjangoUserService/api.md)**：用户服务 API 文档
 
