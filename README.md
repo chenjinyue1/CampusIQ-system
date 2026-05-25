@@ -1,14 +1,5 @@
 # 🚀 RAG对话系统
 
-<div align="center">
-<a href="https://github.com/RMA-MUN/LangChain-RAG-FastAPI-Service/stargazers">
-  <img src="https://img.shields.io/github/stars/RMA-MUN/LangChain-RAG-FastAPI-Service?style=flat-square&label=Stars&color=orange" alt="Stars">
-</a>
-<a href="https://github.com/RMA-MUN/LangChain-RAG-FastAPI-Service/network/members">
-  <img src="https://img.shields.io/github/forks/RMA-MUN/LangChain-RAG-FastAPI-Service?style=flat-square&label=Forks&color=green" alt="Forks">
-</a>
-  <img src="https://img.shields.io/badge/python-v3.12.4-blue.svg" alt="System">
-</div>
 
 ## 📋 目录
 
@@ -78,15 +69,14 @@ flowchart TD
 
 ### 主要功能界面
 
-| 功能模块 | 界面展示 | 功能说明 |
-|---------|:--------|---------|
-| AI 聊天 | ![AI聊天界面](./images/aichat.png) | 基于 RAG 的智能问答界面，支持上下文对话和文档引用 |
-| 聊天管理 | ![聊天管理界面](./images/chat_manager.png) | 会话历史管理，支持会话列表查看和切换 |
-| 用户服务 | ![用户服务界面](./images/user_service.png) | 用户注册、登录和个人信息管理 |
-| 知识库管理 | ![知识库管理页面](./images/knowledge_manager.png) | 文档上传、查看和管理知识库 |
-| 文档切片 | ![文档切片](./images/text_spliter.png) | 可视化文档切片详情，支持查看切片内容 |
+| 功能模块 | 功能说明 |
+|---------|---------|
+| AI 聊天 | 基于 RAG 的智能问答界面，支持上下文对话和文档引用 |
+| 聊天管理 | 会话历史管理，支持会话列表查看和切换 |
+| 用户服务 | 用户注册、登录和个人信息管理 |
+| 知识库管理 | 文档上传、查看和管理知识库 |
+| 文档切片 | 可视化文档切片详情，支持查看切片内容 |
 
-> **提示**：点击图片可查看大图，所有界面均支持中英文切换
 
 ## 快速开始
 
