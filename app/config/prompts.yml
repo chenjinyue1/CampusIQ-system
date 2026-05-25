@@ -1,0 +1,5 @@
+
+main_prompt_path: app/prompts/main_prompt.txt
+rag_summarize_prompt_path: app/prompts/rag_summarize.txt
+report_prompt_path: app/prompts/report_prompt.txt
+reorder_prompt_path: app/prompts/reorder_prompt.txt
