@@ -14,6 +14,7 @@ from app.core.rate_limit import RateLimitMiddleware
 
 from app.router.health import health_router
 from app.router.user import user_router
+from app.router.knowledge import knowledge_router
 
 
 # 加载环境变量
@@ -94,6 +95,7 @@ async def hello(name: str):
 
 app.include_router(health_router)
 app.include_router(user_router)
+app.include_router(knowledge_router)
 
 
 

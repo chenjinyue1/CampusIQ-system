@@ -11,10 +11,10 @@ from app.models.factory import embed_model
 from app.utils.path_tool import get_abs_path
 from app.utils.logger_handler import logger
 
-from retrievers import EmptyRetriever
-from retrievers.hybrid_retriever import HybridRetriever
-from md5_manager import MD5Store
-from document_handler import DocumentProcessor
+from app.rag.retrievers.empty_retriever import EmptyRetriever
+from app.rag.retrievers.hybrid_retriever import HybridRetriever
+from app.rag.md5_manager.md5_store import MD5Store
+from app.rag.document_handler import DocumentProcessor
 from app.utils.image_extractor import delete_image_directory, delete_user_all_images
 
 
