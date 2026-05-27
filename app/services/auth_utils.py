@@ -13,32 +13,27 @@ from app.db.redis_config import connect_redis, set_redis_cache
 load_dotenv()
 
 # Django JWT配置
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 
 # 创建Bearer认证方案
 security = HTTPBearer()
 
-#
-# def decode_django_jwt(token: str) -> Optional[Dict[str, Any]]:
-#     """解析Django生成的JWT token
-#
-#     Args:
-#         token: JWT token字符串
-#
-#     Returns:
-#         解析后的payload，如果解析失败返回None
-#     """
-#     try:
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#         return payload
-#     except JWTError:
-#         return None
 
 def decode_django_jwt(token: str) -> Optional[Dict[str, Any]]:
-    # 临时测试用：忽略真实解码
-    return {"user_id": "test-uuid-123", "jti": "test-jti"}
+    """解析Django生成的JWT token
 
+    Args:
+        token: JWT token字符串
+
+    Returns:
+        解析后的payload，如果解析失败返回None
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
 
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """从Django JWT中获取当前用户UUID

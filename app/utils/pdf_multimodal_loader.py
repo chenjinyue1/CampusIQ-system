@@ -1,3 +1,7 @@
+"""
+pdf_多模态加载器
+"""
+
 import os
 import tempfile
 import asyncio

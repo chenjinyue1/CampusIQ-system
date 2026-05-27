@@ -1,3 +1,7 @@
+"""
+图像提取器
+"""
+
 import os
 import shutil
 

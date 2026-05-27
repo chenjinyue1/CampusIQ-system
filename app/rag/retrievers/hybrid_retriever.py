@@ -1,17 +1,18 @@
 import asyncio
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_core.retrievers import BaseRetriever
+from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever
-from langchain_classic.retrievers import EnsembleRetriever
+from langchain_core.retrievers import BaseRetriever
 
+from app.rag.retrievers.empty_retriever import EmptyRetriever
 from app.utils.config_handler import chroma_conf
-
-from .empty_retriever import EmptyRetriever
 
 
 class HybridRetriever:
-    """混合检索器（BM25 + 向量检索）"""
+    """
+    混合检索器（BM25 + 向量检索）
+    混合检索器，用于将向量数据库和文档处理器结合在一起。
+    """
 
     def __init__(self, vectors_store: Chroma):
         self.vectors_store = vectors_store
@@ -26,19 +27,19 @@ class HybridRetriever:
             return None
 
         all_docs_result = await asyncio.to_thread(
-            self.vectors_store.get,
-            include=['documents', 'metadatas'],
-            where={'user_id': user_id}
-        )
+            self.vectors_store.get, # 获取所有文档
+            include=["documents", "metadatas"], # 只返回文档和元数据
+            where={"user_id": user_id} # 只返回指定用户的文档
+        ) # 获取所有文档
         documents = []
-        for i, doc_content in enumerate(all_docs_result['documents']):
-            metadata = all_docs_result['metadatas'][i] if i < len(all_docs_result['metadatas']) else {}
-            documents.append(Document(page_content=doc_content, metadata=metadata))
+        for i,doc_content in enumerate(all_docs_result["documents"]): # 遍历所有文档,获取文档内容,获取元数据,添加到列表中
+            metadata = all_docs_result["metadatas"][i] # 获取元数据,添加到列表中
+            documents.append(Document(page_count=doc_content, metadata=metadata)) # 创建文档对象,添加到列表中
 
         if documents:
             bm25_retriever = BM25Retriever.from_documents(
                 documents=documents,
-                k=chroma_conf['k']
+                k=chroma_conf['k'] # 设置BM25的k值,默认为5
             )
             return bm25_retriever
         else:
@@ -50,14 +51,15 @@ class HybridRetriever:
         :return: 文档列表
         """
         all_docs = await asyncio.to_thread(
-            self.vectors_store.get,
-            include=['documents', 'metadatas']
+            self.vectors_store.get, # 获取所有文档
+            include=["documents", "metadatas"] # 只返回文档和元数据
         )
         documents = []
-        for i, doc in enumerate(all_docs['documents']):
-            metadata = all_docs['metadatas'][i] if i < len(all_docs['metadatas']) else {}
+        for i,doc in enumerate(all_docs["documents"]): # 遍历所有文档,获取文档内容,获取元数据,添加到列表中
+            metadata = all_docs["metadatas"][i] if i < len(all_docs["metadatas"]) else {} # 获取元数据,添加到列表中
             documents.append(Document(page_content=doc, metadata=metadata))
         return documents
+
 
     async def get_retriever(self, query: str = None, user_id: str = None) -> BaseRetriever:
         """
@@ -69,22 +71,25 @@ class HybridRetriever:
         if not user_id:
             return EmptyRetriever()
 
-        filter_dict = {'user_id': user_id}
+        filter_dict = {"user_id": user_id}
         vector_retriever = self.vectors_store.as_retriever(
-            search_type='similarity',
-            search_kwargs={'k': chroma_conf['k'], 'filter': filter_dict},
-        )
+            search_type='similarity', # 设置检索类型为相似度
+            search_kwargs={'k': chroma_conf['k'], 'filter': filter_dict} # 设置向量检索器的k值,并设置过滤条件
+        ) # 创建向量检索器, 默认使用相似度检索
+
         bm25_retriever = await self.get_bm25_retriever(user_id)
 
         if bm25_retriever:
             weights = await self.get_dynamic_weights(query)
+            from langchain_classic.retrievers import EnsembleRetriever
             ensemble_retriever = EnsembleRetriever(
-                retrievers=[vector_retriever, bm25_retriever],
-                weights=weights
+                retrievers=[vector_retriever, bm25_retriever], # 创建混合检索器, 使用向量检索器和BM25检索器
+                weights=weights # 设置权重
             )
             return ensemble_retriever
         else:
-            return vector_retriever
+            return vector_retriever # 如果没有BM25检索器,则返回向量检索器
+
 
     @staticmethod
     async def get_dynamic_weights(query: str = None):
@@ -93,29 +98,31 @@ class HybridRetriever:
         :param query: 查询语句
         :return: 权重列表 [向量检索权重, BM25检索权重]
         """
-        default_vector_weight = 0.5
-        default_bm25_weight = 0.5
+        default_vector_weight = 0.5 # 默认权重, 向量检索器
+        default_bm25_weight = 0.5 # 默认权重, BM25检索器
 
         if not query:
             return [default_vector_weight, default_bm25_weight]
 
-        query_length = len(query)
-        query_words = len(query.split())
+        query_length = len(query) # 查询长度
+        query_words = len(query.split())  # 查询词数, 用于计算权重
 
-        if query_length > 50:
+        if query_length >50: # 如果查询长度大于50,则将向量检索权重调高,BM25权重调低
             vector_weight = 0.7
             bm25_weight = 0.3
-        elif query_length < 20:
+        elif query_length < 20: # 如果查询长度小于20,则将向量检索权重调低,BM25权重调高
             vector_weight = 0.3
             bm25_weight = 0.7
         else:
             vector_weight = default_vector_weight
             bm25_weight = default_bm25_weight
 
-        if query_words > 0:
-            word_density = query_words / query_length
-            if word_density > 0.1:
+        if query_words > 0: # 如果查询词数大于0,则根据查询词数调整权重,否则保持不变
+            word_density = query_words / query_length # 查询词密度, 用于计算权重, 越长则权重越低
+            if word_density > 0.1: # 如果查询词密度大于0.1,则将向量检索权重调低,BM25权重调高
                 bm25_weight = min(bm25_weight + 0.1, 0.7)
                 vector_weight = max(vector_weight - 0.1, 0.3)
 
         return [vector_weight, bm25_weight]
+
+

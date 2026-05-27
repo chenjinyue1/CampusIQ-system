@@ -11,15 +11,13 @@ from app.db.redis_config import connect_redis, close_redis
 from app.services.database_session_manager import init_database_session_manager
 from app.utils.logger_handler import logger
 from app.core.rate_limit import RateLimitMiddleware
-from app.config import get_settings
 
 from app.router.health import health_router
-from app.router.auth import auth_router
+from app.router.user import user_router
 
 
 # 加载环境变量
 load_dotenv()
-settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -95,7 +93,7 @@ async def hello(name: str):
 
 
 app.include_router(health_router)
-app.include_router(auth_router)
+app.include_router(user_router)
 
 
 
