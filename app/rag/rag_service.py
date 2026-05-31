@@ -77,17 +77,25 @@ class RagService:
     @traceable
     async def retrieve_document(self, query: str) -> list:
         """使用HyDE技术 从向量数据库里检索文档"""
+        logger.info(f"【HyDE】开始检索 - user_id: {self.user_id}, query: {query}")
+
         if not self.user_id:
-            logger.warning(f"【HyDE】user_id为空，不进行任何检索")
+            logger.warning(f"【HyDE】user_id为空，不进行任何检索。(当前user_id: {self.user_id})")
+            logger.warning("💡 提示：请确保在创建RagService时传入有效的user_id参数")
             return []
 
         try:
             # 确保检索器已初始化，传递query参数
             if self.retriever is None:
+                logger.info(f"【HyDE】检索器未初始化，开始初始化...")
                 await self.initialize_retriever(query)
 
+            if not self.retriever:
+                logger.error(f"【HyDE】检索器初始化失败")
+                return []
+
             # 使用HyDE技术生成假设性文档
-            logger.info(f"【HyDE】开始处理查询: {query}")
+            logger.info(f"【HyDE】当前user_id: {self.user_id}，开始处理查询: {query}")
 
             if self.thinking_callback:
                 await self.thinking_callback({
@@ -201,8 +209,10 @@ class RagService:
         :param query: 查询语句
         :return: 包含文档列表和摘要的字典
         """
+        logger.info(f"【RAG】开始处理查询 - user_id: {self.user_id}, query: {query}")
+
         if not self.user_id:
-            logger.warning(f"【RAG】user_id为空，不返回任何文档")
+            logger.warning(f"【RAG】user_id为空，不返回任何文档。(当前user_id: {self.user_id})")
             return {
                 "documents": [],
                 "summary": "抱歉，我没有找到相关的信息。"
@@ -317,7 +327,7 @@ class RagService:
                 "summary": "抱歉，处理您的请求时出现了错误。"
             }
 
-    @traceable
+    @traceable # 使用装饰器, 记录函数调用信息, 并保存到数据库
     async def rag_summary(self, query: str) -> str:
         """RAG 摘要"""
         result = await self.get_documents_and_summary(query)
@@ -327,10 +337,16 @@ if __name__ == '__main__':
     import asyncio
 
     async def main():
-        service = RagService()
+        test_user_id = "eiXLpAR5PsfGBoMJvjXV34"
+        service = RagService(user_id=test_user_id)
         await service.initialize_retriever()
         result = await service.rag_summary("如何判断扫拖一体机器人是否需要更换新机？")
         print(result)
+
+        # 方式2：如果需要调试，可以打印检索的文档数量
+        documents = await service.retrieve_document("如何判断扫拖一体机器人是否需要更换新机？")
+        print(f"检索到 {len(documents)} 个文档")
+
 
     asyncio.run(main())
 

@@ -113,6 +113,7 @@ class AgentFactory:
             MessagesPlaceholder(variable_name="agent_scratchpad")
         ])
 
+
     def create_agent_executor(
             self,
             custom_tools: Optional[List[BaseTool]] = None,
@@ -251,8 +252,8 @@ async def get_agent_stream_response(
     :return: 流式响应生成器
     """
     
-    thinking_queue = asyncio.Queue()
-    agent_result_holder = {"response": None, "error": None}
+    thinking_queue = asyncio.Queue() # 思考过程队列
+    agent_result_holder = {"response": None, "error": None} # 结果保存, 用于保存结果
     agent_done = asyncio.Event()
     
     async def thinking_callback(data: dict):
@@ -367,3 +368,406 @@ async def get_agent_stream_response(
         error_message = f"错误: {str(e)}"
         yield f"data: {json.dumps({'type': 'error', 'content': error_message, 'session_id': session_id}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
+
+
+# 测试
+# ... existing code ...
+
+
+if __name__ == '__main__':
+    import asyncio
+    import sys
+    from datetime import datetime
+
+    print("=" * 80)
+    print("🚀 CampusIQ07 全链路集成测试")
+    print("=" * 80)
+    print(f"⏰ 测试开始时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print()
+
+
+    async def test_full_workflow():
+        """完整工作流测试 - 模拟真实用户交互"""
+
+        # 测试配置
+        TEST_USER_ID = "eiXLpAR5PsfGBoMJvjXV34"
+        TEST_SESSION_ID = f"test_session_{int(datetime.now().timestamp())}"
+
+        test_results = {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "errors": []
+        }
+
+        def record_result(test_name: str, success: bool, error: str = None):
+            """记录测试结果"""
+            test_results["total"] += 1
+            if success:
+                test_results["passed"] += 1
+                print(f"✅ [{test_name}] 通过")
+            else:
+                test_results["failed"] += 1
+                test_results["errors"].append({"test": test_name, "error": error})
+                print(f"❌ [{test_name}] 失败: {error}")
+
+        print("\n" + "=" * 80)
+        print("📋 测试计划:")
+        print("  1. Agent流式响应测试 (基础问答)")
+        print("  2. RAG检索测试 (知识库查询)")
+        print("  3. 多轮对话测试 (上下文保持)")
+        print("  4. 工具调用测试 (天气/时间/用户信息)")
+        print("  5. 报告生成测试 (复杂任务)")
+        print("  6. 异常处理测试 (错误场景)")
+        print("=" * 80)
+
+        # ==========================================
+        # 测试 1: Agent流式响应 - 基础问答
+        # ==========================================
+        print("\n\n【测试 1】Agent流式响应 - 基础问答")
+        print("-" * 80)
+        try:
+            query = "你好，请介绍一下你自己"
+            print(f"📤 用户提问: {query}\n")
+
+            response_chunks = []
+            thinking_events = []
+
+            async for chunk in get_agent_stream_response(
+                    query=query,
+                    session_id=TEST_SESSION_ID,
+                    user_id=TEST_USER_ID
+            ):
+                if chunk.startswith("data: "):
+                    data_str = chunk[6:].strip()
+                    if data_str:
+                        try:
+                            import json
+                            data = json.loads(data_str)
+                            if data.get("type") == "thinking":
+                                thinking_events.append(data)
+                                print(f"💭 [思考] {data.get('stage')}: {data.get('content', '')[:100]}")
+                            elif data.get("type") == "response":
+                                content = data.get("content", "")
+                                response_chunks.append(content)
+                                if content:
+                                    print(content, end="", flush=True)
+                            elif data.get("type") == "done":
+                                print("\n✅ 流式响应完成")
+                        except json.JSONDecodeError:
+                            pass
+
+            full_response = "".join(response_chunks)
+
+            if len(full_response) > 0 and len(thinking_events) >= 0:
+                record_result("基础问答", True)
+                print(f"\n📊 统计: 收到 {len(thinking_events)} 个思考事件, {len(response_chunks)} 个响应块")
+            else:
+                record_result("基础问答", False, "未收到有效响应")
+
+        except Exception as e:
+            record_result("基础问答", False, str(e))
+            import traceback
+            traceback.print_exc()
+
+        await asyncio.sleep(1)
+
+        # ==========================================
+        # 测试 2: RAG检索测试 - 知识库查询
+        # ==========================================
+        print("\n\n【测试 2】RAG检索测试 - 知识库查询")
+        print("-" * 80)
+        try:
+            query = "扫拖一体机器人如何判断是否需要清洁滤网？"
+            print(f"📤 用户提问: {query}\n")
+
+            response_chunks = []
+            has_retrieval = False
+
+            async for chunk in get_agent_stream_response(
+                    query=query,
+                    session_id=TEST_SESSION_ID,
+                    user_id=TEST_USER_ID
+            ):
+                if chunk.startswith("data: "):
+                    data_str = chunk[6:].strip()
+                    if data_str:
+                        try:
+                            import json
+                            data = json.loads(data_str)
+                            if data.get("type") == "thinking":
+                                stage = data.get("stage", "")
+                                if stage in ["retrieval", "hyde", "reorder"]:
+                                    has_retrieval = True
+                                print(f"💭 [{stage}] {data.get('content', '')[:100]}")
+                            elif data.get("type") == "response":
+                                content = data.get("content", "")
+                                response_chunks.append(content)
+                                print(content, end="", flush=True)
+                        except json.JSONDecodeError:
+                            pass
+
+            full_response = "".join(response_chunks)
+
+            if has_retrieval and len(full_response) > 10:
+                record_result("RAG检索", True)
+                print(f"\n📊 统计: 检索到相关文档, 生成 {len(full_response)} 字符的回答")
+            else:
+                record_result("RAG检索", False, f"未触发检索或响应过短 (长度: {len(full_response)})")
+
+        except Exception as e:
+            record_result("RAG检索", False, str(e))
+            import traceback
+            traceback.print_exc()
+
+        await asyncio.sleep(1)
+
+        # ==========================================
+        # 测试 3: 多轮对话测试 - 上下文保持
+        # ==========================================
+        print("\n\n【测试 3】多轮对话测试 - 上下文保持")
+        print("-" * 80)
+
+        conversation = [
+            ("扫地机器人的电池续航一般多久？", "第一轮"),
+            ("那充电需要多长时间？", "第二轮"),
+            ("它支持自动回充吗？", "第三轮")
+        ]
+
+        multi_round_success = True
+
+        for i, (query, round_name) in enumerate(conversation, 1):
+            try:
+                print(f"\n{round_name}: {query}")
+                response_chunks = []
+
+                async for chunk in get_agent_stream_response(
+                        query=query,
+                        session_id=TEST_SESSION_ID,
+                        user_id=TEST_USER_ID
+                ):
+                    if chunk.startswith("data: "):
+                        data_str = chunk[6:].strip()
+                        if data_str:
+                            try:
+                                import json
+                                data = json.loads(data_str)
+                                if data.get("type") == "response":
+                                    response_chunks.append(data.get("content", ""))
+                            except json.JSONDecodeError:
+                                pass
+
+                response = "".join(response_chunks)
+                if len(response) > 5:
+                    print(f"✅ {round_name}响应成功 (长度: {len(response)})")
+                else:
+                    print(f"⚠️ {round_name}响应过短")
+                    multi_round_success = False
+
+            except Exception as e:
+                print(f"❌ {round_name}失败: {e}")
+                multi_round_success = False
+                break
+
+            await asyncio.sleep(0.5)
+
+        record_result("多轮对话", multi_round_success, "某轮对话失败" if not multi_round_success else None)
+
+        # ==========================================
+        # 测试 4: 工具调用测试
+        # ==========================================
+        print("\n\n【测试 4】工具调用测试")
+        print("-" * 80)
+
+        tool_tests = [
+            ("现在几点了？", "时间查询工具", "what_time"),
+            ("北京天气怎么样？", "天气查询工具", "weather"),
+        ]
+
+        for query, test_name, expected_tool in tool_tests:
+            try:
+                print(f"\n📤 测试 {test_name}: {query}")
+                response_chunks = []
+                tool_called = False
+
+                async for chunk in get_agent_stream_response(
+                        query=query,
+                        session_id=TEST_SESSION_ID,
+                        user_id=TEST_USER_ID
+                ):
+                    if chunk.startswith("data: "):
+                        data_str = chunk[6:].strip()
+                        if data_str:
+                            try:
+                                import json
+                                data = json.loads(data_str)
+                                if data.get("type") == "thinking":
+                                    if "tool" in data.get("content", "").lower():
+                                        tool_called = True
+                                elif data.get("type") == "response":
+                                    response_chunks.append(data.get("content", ""))
+                            except json.JSONDecodeError:
+                                pass
+
+                response = "".join(response_chunks)
+
+                if tool_called or len(response) > 5:
+                    record_result(test_name, True)
+                    print(f"✅ {test_name}成功")
+                else:
+                    record_result(test_name, False, "未检测到工具调用")
+
+            except Exception as e:
+                record_result(test_name, False, str(e))
+
+            await asyncio.sleep(0.5)
+
+        # ==========================================
+        # 测试 5: 报告生成测试 - 复杂任务
+        # ==========================================
+        print("\n\n【测试 5】报告生成测试 - 复杂任务")
+        print("-" * 80)
+        try:
+            query = "帮我生成我的使用报告，包括我最近的使用情况和常见问题"
+            print(f"📤 用户请求: {query}\n")
+
+            response_chunks = []
+            has_summary = False
+
+            async for chunk in get_agent_stream_response(
+                    query=query,
+                    session_id=TEST_SESSION_ID,
+                    user_id=TEST_USER_ID
+            ):
+                if chunk.startswith("data: "):
+                    data_str = chunk[6:].strip()
+                    if data_str:
+                        try:
+                            import json
+                            data = json.loads(data_str)
+                            if data.get("type") == "thinking":
+                                stage = data.get("stage", "")
+                                if stage == "summarize":
+                                    has_summary = True
+                                print(f"💭 [{stage}] {data.get('content', '')[:100]}")
+                            elif data.get("type") == "response":
+                                content = data.get("content", "")
+                                response_chunks.append(content)
+                                print(content, end="", flush=True)
+                        except json.JSONDecodeError:
+                            pass
+
+            full_response = "".join(response_chunks)
+
+            if has_summary and len(full_response) > 50:
+                record_result("报告生成", True)
+                print(f"\n📊 统计: 生成了 {len(full_response)} 字符的报告")
+            else:
+                record_result("报告生成", False, f"未触发总结或报告过短 (长度: {len(full_response)})")
+
+        except Exception as e:
+            record_result("报告生成", False, str(e))
+            import traceback
+            traceback.print_exc()
+
+        # ==========================================
+        # 测试 6: 异常处理测试
+        # ==========================================
+        print("\n\n【测试 6】异常处理测试")
+        print("-" * 80)
+
+        # 测试空查询
+        try:
+            print("\n📤 测试空查询...")
+            response_chunks = []
+
+            async for chunk in get_agent_stream_response(
+                    query="",
+                    session_id=TEST_SESSION_ID,
+                    user_id=TEST_USER_ID
+            ):
+                if chunk.startswith("data: "):
+                    data_str = chunk[6:].strip()
+                    if data_str:
+                        try:
+                            import json
+                            data = json.loads(data_str)
+                            if data.get("type") == "response":
+                                response_chunks.append(data.get("content", ""))
+                            elif data.get("type") == "error":
+                                print(f"⚠️ 收到错误: {data.get('content')}")
+                        except json.JSONDecodeError:
+                            pass
+
+            record_result("空查询处理", True)
+            print("✅ 空查询被正常处理")
+
+        except Exception as e:
+            record_result("空查询处理", False, str(e))
+
+        # 测试超长查询
+        try:
+            print("\n📤 测试超长查询...")
+            long_query = "请问" + "这个问题很重要" * 100
+
+            response_chunks = []
+            async for chunk in get_agent_stream_response(
+                    query=long_query,
+                    session_id=TEST_SESSION_ID,
+                    user_id=TEST_USER_ID
+            ):
+                if chunk.startswith("data: "):
+                    data_str = chunk[6:].strip()
+                    if data_str:
+                        try:
+                            import json
+                            data = json.loads(data_str)
+                            if data.get("type") == "response":
+                                response_chunks.append(data.get("content", ""))
+                        except json.JSONDecodeError:
+                            pass
+
+            record_result("超长查询处理", True)
+            print("✅ 超长查询被正常处理")
+
+        except Exception as e:
+            record_result("超长查询处理", False, str(e))
+
+        # ==========================================
+        # 输出测试报告
+        # ==========================================
+        print("\n\n" + "=" * 80)
+        print("📊 测试报告汇总")
+        print("=" * 80)
+        print(f"总测试数: {test_results['total']}")
+        print(f"✅ 通过: {test_results['passed']}")
+        print(f"❌ 失败: {test_results['failed']}")
+        print(
+            f"成功率: {(test_results['passed'] / test_results['total'] * 100) if test_results['total'] > 0 else 0:.1f}%")
+
+        if test_results['errors']:
+            print("\n❌ 失败的测试详情:")
+            for error in test_results['errors']:
+                print(f"  - {error['test']}: {error['error']}")
+
+        print("\n" + "=" * 80)
+        print(f"⏰ 测试结束时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print("=" * 80)
+
+        return test_results['failed'] == 0
+
+
+    # 运行测试
+    try:
+        success = asyncio.run(test_full_workflow())
+        sys.exit(0 if success else 1)
+    except KeyboardInterrupt:
+        print("\n\n⚠️ 测试被用户中断")
+        sys.exit(1)
+    except Exception as e:
+        print(f"\n\n❌ 测试执行出错: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
+

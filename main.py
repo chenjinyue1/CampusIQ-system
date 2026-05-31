@@ -97,7 +97,6 @@ async def hello(name: str):
 app.include_router(health_router)
 app.include_router(user_router)
 app.include_router(knowledge_router)
-
 app.include_router(chat_router)
 
 

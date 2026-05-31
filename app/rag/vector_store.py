@@ -6,6 +6,7 @@ import shutil
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
+# from app.router.knowledge import get_document_detail
 from app.utils.config_handler import chroma_conf
 from app.models.factory import embed_model
 from app.utils.path_tool import get_abs_path
@@ -48,9 +49,9 @@ class VectorStoreService:
     之所以需要单例，是因为 ChromaDB 客户端维护了内部的连接池和缓存，
     多个实例会导致资源冲突和不可预期的 KeyError。
     """
-    _instance = None
-    _initialized = False
-    _init_lock = threading.Lock()
+    _instance = None # 单例实例
+    _initialized = False # 是否已初始化
+    _init_lock = threading.Lock() # 锁
 
     def __new__(cls):
         # 第一重检查（无锁，性能优先）
@@ -92,7 +93,7 @@ class VectorStoreService:
         )
         self.md5_store = MD5Store() # MD5记录
         self.hybrid_retriever = HybridRetriever(self.vectors_store)
-        self.document_processor = DocumentProcessor(self.vectors_store, self.md5_store)
+        self.document_processor = DocumentProcessor(self.vectors_store, self.md5_store) # 文档处理器
 
     async def get_bm25_retriever(self, user_id: str = None):
         return await self.hybrid_retriever.get_bm25_retriever(user_id)
@@ -453,7 +454,16 @@ class VectorStoreService:
 if __name__ == '__main__':
     async def main():
         store = VectorStoreService()
-        await store.get_document()
+        # await store.get_document()
+        #
+        # retriever = await store.get_retriever()
+        # results = await retriever.ainvoke('扫拖一体机器人可以只扫地不拖地吗')
+        # print(f"检索结果数量: {len(results)}")
+        # for result in results:
+        #     print(result)
+
+        user_id = "eiXLpAR5PsfGBoMJvjXV34"
+        await store._get_all_documents()
 
         retriever = await store.get_retriever()
         results = await retriever.ainvoke('扫拖一体机器人可以只扫地不拖地吗')

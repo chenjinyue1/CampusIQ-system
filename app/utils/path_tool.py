@@ -1,6 +1,3 @@
-"""
-为整个工程提供统一的绝对路径
-"""
 import os
 
 
@@ -11,9 +8,7 @@ def get_project_root() -> str:
     """
     # 从当前文件所在目录向上两级（app/utils -> app -> backend）
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    # 获取工程的根目录，先获取文件所在的文件夹绝对路径
     app_dir = os.path.dirname(current_dir)
-    # 获取工程根目录
     project_root = os.path.dirname(app_dir)
     return project_root
 
@@ -25,8 +20,8 @@ def get_abs_path(relative_path: str) -> str:
     """
     project_path = get_project_root()
     # 确保路径格式正确，处理不同操作系统的路径分隔符
-    abs_path = os.path.normpath(os.path.join(project_path, relative_path))
-    return abs_path
+    abstract_path = os.path.normpath(os.path.join(project_path, relative_path))
+    return abstract_path
 
 def get_data_path() -> str:
     """

@@ -62,36 +62,6 @@ def load_reorder_prompts():
         raise e
 
 
-def load_auto_tag_prompts():
-    try:
-        auto_tag_prompt_path = get_abs_path(prompts_conf["auto_tag_prompt_path"])
-    except KeyError as e:
-        logger.error(f"[load_auto_tag_prompts]在yaml配置项中没有auto_tag_prompt_path配置项")
-        raise e
-
-    try:
-        return open(auto_tag_prompt_path, "r", encoding="utf-8").read()
-    except Exception as e:
-        logger.error(f"[load_auto_tag_prompts]出错，{str(e)}")
-        raise e
-
-
-def load_write_assistant_prompts():
-    try:
-        write_assistant_prompt_path = get_abs_path(prompts_conf["write_assistant_prompt_path"])
-    except KeyError as e:
-        logger.error(f"[load_write_assistant_prompts]在yaml配置项中没有write_assistant_prompt_path配置项")
-        raise e
-
-    try:
-        return open(write_assistant_prompt_path, "r", encoding="utf-8").read()
-    except Exception as e:
-        logger.error(f"[load_write_assistant_prompts]出错，{str(e)}")
-        raise e
-
-
-
 if __name__ == '__main__':
     print(load_system_prompts())
     print(load_reorder_prompts())
-    print(load_auto_tag_prompts())

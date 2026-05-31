@@ -2,7 +2,10 @@
 name = "campusiq07"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
+authors = [
+    { name = "chenjinyue1", email = "3344644841@qq.com" }
+]
 dependencies = [
      "python-dotenv~=1.2.2",
      "SQLAlchemy~=2.0.48",
@@ -25,7 +28,7 @@ dependencies = [
      "rank-bm25>=0.2.2",
      "PyYAML~=6.0.3",
      "pydantic[email]>=2.13.4",
-     # "pydantic~=2.12.5",
+      "pydantic>=2.13.4",
      "langsmith>=0.7.22",
      "fitz>=0.0.1.dev2",
      "pymupdf>=1.25.0",
@@ -35,4 +38,29 @@ dependencies = [
      "python-magic>=0.4.27",
      "python-magic-bin>=0.4.14",
      "python-multipart>=0.0.29",
+     "langgraph-cli[inmem]>=0.1.54",
+     "pillow>=10.0.0",
+     "imagehash>=4.3.0",
+     #"torch>=2.11.0",
+     #"torchvision>=0.26.0",
+     #"torchaudio>=2.11.0",
+     #"accelerate>=1.13.0",
 ]
+
+## 开发依赖
+#[project.optional-dependencies]
+#dev = [
+#    "pytest>=7.0.0",
+#    "black>=24.0.0",
+#    "isort>=5.12.0",
+#    "ruff>=0.3.0",
+#]
+#
+#[[tool.uv.index]]
+#url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+#default = true
+#
+#[tool.uv]
+#venv.path = ".venv"
+#index-url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+

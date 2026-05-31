@@ -34,7 +34,7 @@ class HybridRetriever:
         documents = []
         for i,doc_content in enumerate(all_docs_result["documents"]): # 遍历所有文档,获取文档内容,获取元数据,添加到列表中
             metadata = all_docs_result["metadatas"][i] # 获取元数据,添加到列表中
-            documents.append(Document(page_count=doc_content, metadata=metadata)) # 创建文档对象,添加到列表中
+            documents.append(Document(page_content=doc_content, metadata=metadata)) # 创建文档对象,添加到列表中
 
         if documents:
             bm25_retriever = BM25Retriever.from_documents(

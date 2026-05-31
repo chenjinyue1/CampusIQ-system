@@ -78,6 +78,7 @@ class DocumentProcessor:
         file_paths = []
         file_names = {}
 
+        # 处理上传的文件，创建临时文件，保存到临时目录，并记录文件名和临时文件路径
         if files:
             for file in files:
                 temp_file_path = await asyncio.to_thread(

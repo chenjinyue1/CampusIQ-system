@@ -1,10 +1,9 @@
 from pydantic import BaseModel
-from typing import List, Tuple, Optional
 
 
 class QueryRequest(BaseModel):
     """查询请求模型"""
-    session_id: Optional[str] = None
+    session_id: str |  None = None
     query: str
 
 
@@ -16,22 +15,22 @@ class RAGRequest(BaseModel):
 class SessionResponse(BaseModel):
     """会话响应模型"""
     session_id: str
-    history: List[Tuple[str, str]]
+    history: list[tuple[str, str]]
 
 
 class AgentStep(BaseModel):
     """Agent执行步骤模型"""
-    thought: Optional[str] = None
-    tool: Optional[str] = None
-    tool_input: Optional[dict] = None
-    tool_output: Optional[str] = None
+    thought: str | None = None
+    tool: str | None = None
+    tool_input: dict | None = None
+    tool_output: str | None = None
 
 
 class AgentResponse(BaseModel):
     """Agent响应模型"""
     response: str
     session_id: str
-    steps: Optional[List[AgentStep]] = None
+    steps: list[AgentStep] | None = None
 
 
 class RAGResponse(BaseModel):
@@ -42,28 +41,28 @@ class RAGResponse(BaseModel):
 class ReorderRequest(BaseModel):
     """重排序请求模型"""
     query: str
-    documents: List[str]
+    documents: list[str]
 
 
 class ReorderResponse(BaseModel):
     """重排序响应模型"""
-    documents: List[dict]
+    documents: list[dict]
 
 
 class KnowledgeDocument(BaseModel):
     """知识库文档信息模型"""
     id: str
     filename: str
-    original_filename: Optional[str] = None
-    user_id: Optional[str] = None
-    chunk_count: int
-    preview: str
-    created_at: Optional[str] = None
+    original_filename: str | None = None
+    user_id: str | None = None
+    chunk_count: int # 切片数量
+    preview: str # 切片预览
+    created_at: str | None = None
 
 
 class KnowledgeListResponse(BaseModel):
     """知识库文档列表响应模型"""
-    documents: List[KnowledgeDocument]
+    documents: list[KnowledgeDocument]
     total_count: int
 
 
@@ -75,7 +74,7 @@ class ChunkDetail(BaseModel):
     chunk_id: str
     index: int
     content: str
-    page: Optional[int] = None
+    page: int | None = None
     images: list[str] = []
 
 
@@ -87,12 +86,12 @@ class KnowledgeDocumentDetail(BaseModel):
     """
     id: str
     filename: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
     chunk_count: int
     content: str
     chunks: list[ChunkDetail] = []
     images: list[str] = []
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 class ChunkInfo(BaseModel):
@@ -111,18 +110,35 @@ class DocumentChunksResponse(BaseModel):
     """文档切片列表响应模型"""
     filename: str
     total_chunks: int
-    chunks: List[ChunkInfo]
+    chunks: list[ChunkInfo]
 
 
 class MD5Record(BaseModel):
     """MD5记录模型"""
     md5: str
-    filename: Optional[str] = None
-    original_filename: Optional[str] = None
-    upload_time: Optional[str] = None
+    filename: str | None = None
+    original_filename: str | None = None
+    upload_time: str | None = None
 
 
 class MD5ListResponse(BaseModel):
     """MD5记录列表响应模型"""
-    records: List[MD5Record]
+    records: list[MD5Record] # MD5记录列表, 每条记录为dict, 包含md5, filename, original_filename, upload_time字段
     total_count: int
+
+
+class NoteCreate(BaseModel):
+    """创建笔记请求模型"""
+    title: str            # 笔记标题
+    content: str           # 笔记内容
+
+
+
+
+
+
+
+
+
+
+
