@@ -49,6 +49,7 @@ class ReorderResponse(BaseModel):
     documents: list[dict]
 
 
+
 class KnowledgeDocument(BaseModel):
     """知识库文档信息模型"""
     id: str
@@ -105,12 +106,12 @@ class ChunkInfo(BaseModel):
     metadata: dict
     images: list[str] = []
 
-
 class DocumentChunksResponse(BaseModel):
     """文档切片列表响应模型"""
     filename: str
     total_chunks: int
     chunks: list[ChunkInfo]
+
 
 
 class MD5Record(BaseModel):
@@ -120,11 +121,11 @@ class MD5Record(BaseModel):
     original_filename: str | None = None
     upload_time: str | None = None
 
-
 class MD5ListResponse(BaseModel):
     """MD5记录列表响应模型"""
     records: list[MD5Record] # MD5记录列表, 每条记录为dict, 包含md5, filename, original_filename, upload_time字段
     total_count: int
+
 
 
 class NoteCreate(BaseModel):
@@ -132,8 +133,26 @@ class NoteCreate(BaseModel):
     title: str            # 笔记标题
     content: str           # 笔记内容
 
+class NoteUpdate(BaseModel):
+    """更新笔记请求模型（所有字段可选）"""
+    title: str | None = None
+    content: str | None = None
 
+class NoteResponse(BaseModel):
+    """笔记响应模型"""
+    id: str
+    user_id: str
+    title: str
+    content: str
+    tags: list[str] | None = None
+    category: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
 
+class NoteListResponse(BaseModel):
+    """笔记列表响应模型"""
+    notes: list[NoteResponse]
+    total_count: int # 笔记总数
 
 
 
