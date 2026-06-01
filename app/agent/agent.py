@@ -13,7 +13,8 @@ from langchain_core.tools import BaseTool
 
 from app.agent.agent_middleware import get_middleware
 from app.agent.agent_tools import rag_summary_tools, get_weather_tools, what_time_is_now, get_user_info_tools, \
-    reorder_documents_tools, set_current_user_id, set_thinking_callback
+    reorder_documents_tools, set_current_user_id, set_thinking_callback, create_note_tool, get_note_stats_tool, \
+    get_related_notes_tool, get_today_reviews_tool, search_notes_tool, mark_reviewed_tool
 from app.utils.logger_handler import logger
 from app.services import session_manager as sm
 from app.utils.prompt_loader import load_system_prompts
@@ -58,6 +59,12 @@ class AgentFactory:
             what_time_is_now,
             get_user_info_tools,
             reorder_documents_tools,
+            search_notes_tool,
+            get_note_stats_tool,
+            get_today_reviews_tool,
+            mark_reviewed_tool,
+            create_note_tool,
+            get_related_notes_tool,
         ]
 
     def _get_default_middleware(self) -> List:

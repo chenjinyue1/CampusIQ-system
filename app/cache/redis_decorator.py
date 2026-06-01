@@ -1,5 +1,6 @@
-from typing import Callable, TypeVar, Generic
+from typing import TypeVar, Generic
 from functools import wraps
+from collections.abc import Callable
 
 from app.db.redis_config import get_redis_cache_json, get_redis_cache_str, set_redis_cache, redis_client
 
@@ -45,7 +46,7 @@ class RedisCache(Generic[T]):
         if cached_data is not None:
             return cached_data
 
-        print(f"【RedisCache】 redis缓存不存在")
+        print("【RedisCache】 redis缓存不存在")
 
         # 缓存不存在，执行函数
         result = await func(*args, **kwargs)

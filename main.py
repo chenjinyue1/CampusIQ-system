@@ -17,6 +17,7 @@ from app.router.user import user_router
 from app.router.knowledge import knowledge_router
 from app.router.chat import chat_router
 from app.router.note import note_router
+from app.router.review import review_router
 
 # 加载环境变量
 load_dotenv()
@@ -99,6 +100,7 @@ app.include_router(user_router)
 app.include_router(knowledge_router)
 app.include_router(chat_router)
 app.include_router(note_router)
+app.include_router(review_router)
 
 
 # 测试路由

@@ -155,9 +155,28 @@ class NoteListResponse(BaseModel):
     total_count: int # 笔记总数
 
 
+class NoteSearchRequest(BaseModel):
+    """笔记搜索请求模型"""
+    query: str
 
 
+class RelatedNoteItem(BaseModel):
+    """关联笔记项模型"""
+    id: str
+    title: str
+    content_preview: str
+    similarity: float
+    source: str  # 来源：knowledge_base 或 note
 
 
+class RelatedNotesResponse(BaseModel):
+    """关联笔记列表响应模型"""
+    notes: list[RelatedNoteItem]
 
 
+class PageRequest(BaseModel):
+    """分页请求模型"""
+    page: int = 1
+    page_size: int = 20
+    category: str | None = None
+    tag: str | None = None
