@@ -1,11 +1,12 @@
-import os
 import json
-from typing import Optional, Dict, Any
+import os
+from typing import Any
+
 import requests
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.failed_response import logger
 from app.db.redis_config import connect_redis, set_redis_cache
@@ -20,7 +21,7 @@ ALGORITHM = os.getenv("ALGORITHM")
 security = HTTPBearer()
 
 
-def decode_django_jwt(token: str) -> Optional[Dict[str, Any]]:
+def decode_django_jwt(token: str) -> dict[str, Any] | None:
     """解析Django生成的JWT token
 
     Args:
@@ -34,6 +35,7 @@ def decode_django_jwt(token: str) -> Optional[Dict[str, Any]]:
         return payload
     except JWTError:
         return None
+
 
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """从Django JWT中获取当前用户UUID
@@ -59,7 +61,6 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
 
     # 检查JWT是否在黑名单中
     jti = payload.get("jti")
-    logger.info(f"【debug】 检查JWT是否在黑名单中，jti: {jti}", extra={"path": "auth_utils.get_current_user_id"})
     if jti:
         redis_client = await connect_redis()
         # 使用通配符查询所有可能的黑名单键格式
@@ -68,8 +69,6 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
 
         # 获取所有匹配的键
         matching_keys = await redis_client.keys(wildcard_pattern)
-        logger.info(f"【debug】 检查JWT是否在黑名单中，匹配的键: {matching_keys}",
-                    extra={"path": "auth_utils.get_current_user_id"})
 
         # 如果有匹配的键，说明JWT在黑名单中
         if matching_keys:
@@ -92,7 +91,7 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
     return user_id
 
 
-async def fetch_user_info_from_django_api(token: str, url: str) -> Optional[Dict[str, Any]]:
+async def fetch_user_info_from_django_api(token: str, url: str) -> dict[str, Any] | None:
     """从Django API获取用户信息
 
     Args:
@@ -116,16 +115,16 @@ async def fetch_user_info_from_django_api(token: str, url: str) -> Optional[Dict
 
         if response.status_code == 200:
             user_data = response.json()
-            logger.info(f"【debug】 从Django API获取用户信息成功",
-                        extra={"path": "auth_utils.fetch_user_info_from_django_api"})
+            logger.info("【debug】 从Django API获取用户信息成功", extra={"path": "auth_utils.fetch_user_info_from_django_api"})
             return user_data
         else:
-            logger.error(f"【debug】 从Django API获取用户信息失败，status_code: {response.status_code}",
-                         extra={"path": "auth_utils.fetch_user_info_from_django_api"})
+            logger.error(
+                f"【debug】 从Django API获取用户信息失败，status_code: {response.status_code}",
+                extra={"path": "auth_utils.fetch_user_info_from_django_api"},
+            )
             return None
     except Exception as e:
-        logger.error(f"【debug】 调用Django API时出错: {str(e)}",
-                     extra={"path": "auth_utils.fetch_user_info_from_django_api"})
+        logger.error(f"【debug】 调用Django API时出错: {str(e)}", extra={"path": "auth_utils.fetch_user_info_from_django_api"})
         return None
 
 
@@ -147,8 +146,7 @@ async def get_user_info_from_redis(user_id: str, credentials: HTTPAuthorizationC
         user_info = await redis_client.get(key)
         if user_info is None:
             # 降级调用django查询用户信息
-            user_data = await fetch_user_info_from_django_api(credentials.credentials,
-                                                              os.getenv("DJANGO_API_URL") + "/user/detail/")
+            user_data = await fetch_user_info_from_django_api(credentials.credentials, os.getenv("DJANGO_API_URL") + "/user/detail/")
             if user_data:
                 # 将用户信息存入Redis，设置过期时间为1小时
                 await set_redis_cache(
@@ -165,8 +163,7 @@ async def get_user_info_from_redis(user_id: str, credentials: HTTPAuthorizationC
             except json.JSONDecodeError:
                 # 如果解析失败，删除旧数据并重新获取
                 await redis_client.delete(key)
-                user_data = await fetch_user_info_from_django_api(credentials.credentials,
-                                                                  os.getenv("DJANGO_API_URL") + "/user/detail/")
+                user_data = await fetch_user_info_from_django_api(credentials.credentials, os.getenv("DJANGO_API_URL") + "/user/detail/")
                 if user_data:
                     await set_redis_cache(
                         key,
@@ -179,8 +176,7 @@ async def get_user_info_from_redis(user_id: str, credentials: HTTPAuthorizationC
     except UnicodeDecodeError:
         # 处理解码错误，删除旧数据并重新获取
         await redis_client.delete(key)
-        user_data = await fetch_user_info_from_django_api(credentials.credentials,
-                                                          os.getenv("DJANGO_API_URL") + "/user/detail/")
+        user_data = await fetch_user_info_from_django_api(credentials.credentials, os.getenv("DJANGO_API_URL") + "/user/detail/")
         if user_data:
             await set_redis_cache(
                 key,
@@ -192,71 +188,3 @@ async def get_user_info_from_redis(user_id: str, credentials: HTTPAuthorizationC
             user_info = None
 
     return user_info
-
-
-#
-# # 测试
-# if __name__ == '__main__':
-#     import asyncio
-#
-#
-#     async def test_auth():
-#         """简单的功能测试"""
-#         print("=" * 50)
-#         print("开始测试 auth_utils 模块")
-#         print("=" * 50)
-#
-#         # 测试 1: JWT 编码和解码
-#         print("\n【测试 1】JWT 编码和解码")
-#         test_payload = {"user_id": "test-uuid-123", "user_name": "testuser", "jti": "test-jti-456"}
-#         token = jwt.encode(test_payload, SECRET_KEY, algorithm=ALGORITHM)
-#         print(f"生成的 Token: {token[:50]}...")
-#
-#         decoded = decode_django_jwt(token)
-#         if decoded:
-#             print(f"✓ 解码成功: user_id={decoded.get('user_id')}")
-#         else:
-#             print("✗ 解码失败")
-#
-#         # 测试 2: 无效 Token
-#         print("\n【测试 2】无效 Token 处理")
-#         invalid_result = decode_django_jwt("invalid.token.here")
-#         if invalid_result is None:
-#             print("✓ 无效 Token 正确返回 None")
-#         else:
-#             print("✗ 无效 Token 处理失败")
-#
-#         # 测试 3: Redis 连接测试
-#         print("\n【测试 3】Redis 连接测试")
-#         try:
-#             redis_client = await connect_redis()
-#             await redis_client.ping()
-#             print("✓ Redis 连接成功")
-#
-#             # 测试缓存设置和读取
-#             test_key = "test:auth:check"
-#             test_value = {"test": "data"}
-#             await set_redis_cache(test_key, test_value, expire=10)
-#             cached = await redis_client.get(test_key)
-#             if cached:
-#                 print(f"✓ Redis 缓存读写成功: {cached}")
-#                 await redis_client.delete(test_key)
-#             else:
-#                 print("✗ Redis 缓存读取失败")
-#         except Exception as e:
-#             print(f"✗ Redis 连接失败: {e}")
-#
-#         # 测试 4: Django API 调用测试（需要 Django 服务运行）
-#         print("\n【测试 4】Django API 调用测试")
-#         django_url = os.getenv("DJANGO_API_URL", "http://127.0.0.1:8001")
-#         print(f"Django API URL: {django_url}")
-#         print("提示: 此测试需要 Django 服务正在运行")
-#
-#         print("\n" + "=" * 50)
-#         print("测试完成")
-#         print("=" * 50)
-#
-#
-#     asyncio.run(test_auth())
-
-

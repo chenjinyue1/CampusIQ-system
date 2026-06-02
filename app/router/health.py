@@ -1,13 +1,13 @@
-from fastapi import APIRouter
 from fastapi import HTTPException
+from fastapi.routing import APIRouter
 
 from app.core.success_response import success_response
-from app.db.redis_config import check_redis_connection
 from app.db.db_config import check_mysql_connection
+from app.db.redis_config import check_redis_connection
 
-health_router = APIRouter(prefix="/health", tags=["健康检查"])
+health_router = APIRouter(prefix="/health")
 
-@health_router.get("/live", summary="健康检查")
+@health_router.get("/live", tags=["健康检查"], summary="健康检查")
 async def get_health_application_status():
     """健康检查-存活"""
     return success_response(
@@ -17,7 +17,7 @@ async def get_health_application_status():
         }
     )
 
-@health_router.get("/ready", summary="健康检查")
+@health_router.get("/ready", tags=["健康检查"], summary="健康检查")
 async def get_health_readiness():
     """健康检查-就绪"""
     # 检查mysql连接

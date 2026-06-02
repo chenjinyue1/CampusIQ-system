@@ -1,22 +1,19 @@
 import asyncio
 import os
-import threading
 import shutil
+import threading
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-# from app.router.knowledge import get_document_detail
-from app.utils.config_handler import chroma_conf
-from app.models.factory import embed_model
-from app.utils.path_tool import get_abs_path
 from app.utils.logger_handler import logger
-
-from app.rag.retrievers.empty_retriever import EmptyRetriever
-from app.rag.retrievers.hybrid_retriever import HybridRetriever
-from app.rag.md5_manager.md5_store import MD5Store
-from app.rag.document_handler import DocumentProcessor
+from app.utils.config_handler import chroma_conf
 from app.utils.image_extractor import delete_image_directory, delete_user_all_images
+from app.utils.path_tool import get_abs_path
+
+from app.rag.document_handler import DocumentProcessor
+from app.rag.md5_manager import MD5Store
+from app.rag.retrievers.hybrid_retriever import HybridRetriever
 
 
 def _clear_chroma_cache():
@@ -49,9 +46,9 @@ class VectorStoreService:
     之所以需要单例，是因为 ChromaDB 客户端维护了内部的连接池和缓存，
     多个实例会导致资源冲突和不可预期的 KeyError。
     """
-    _instance = None # 单例实例
-    _initialized = False # 是否已初始化
-    _init_lock = threading.Lock() # 锁
+    _instance = None
+    _initialized = False
+    _init_lock = threading.Lock()
 
     def __new__(cls):
         # 第一重检查（无锁，性能优先）
@@ -88,12 +85,20 @@ class VectorStoreService:
     def _init_chroma(self, persist_dir: str):
         self.vectors_store = Chroma(
             collection_name=chroma_conf['collection_name'],
-            embedding_function=embed_model,
+            embedding_function=self._get_embed_model(),
             persist_directory=persist_dir,
         )
-        self.md5_store = MD5Store() # MD5记录
+        self.md5_store = MD5Store()
         self.hybrid_retriever = HybridRetriever(self.vectors_store)
-        self.document_processor = DocumentProcessor(self.vectors_store, self.md5_store) # 文档处理器
+        self.document_processor = DocumentProcessor(self.vectors_store,
+                                                    self.md5_store,)
+                                                    #self._get_embed_model())
+
+    @staticmethod
+    def _get_embed_model():
+        """从后台初始化管理器获取 embed_model"""
+        from app.core.background_init import init_manager
+        return init_manager.embed_model
 
     async def get_bm25_retriever(self, user_id: str = None):
         return await self.hybrid_retriever.get_bm25_retriever(user_id)
@@ -454,21 +459,13 @@ class VectorStoreService:
 if __name__ == '__main__':
     async def main():
         store = VectorStoreService()
-        # await store.get_document()
-        #
-        # retriever = await store.get_retriever()
-        # results = await retriever.ainvoke('扫拖一体机器人可以只扫地不拖地吗')
-        # print(f"检索结果数量: {len(results)}")
-        # for result in results:
-        #     print(result)
-
-        user_id = "eiXLpAR5PsfGBoMJvjXV34"
-        await store._get_all_documents()
+        await store.get_document()
 
         retriever = await store.get_retriever()
-        results = await retriever.ainvoke('扫拖一体机器人可以只扫地不拖地吗')
+        results = await retriever.ainvoke('扫地')
         print(f"检索结果数量: {len(results)}")
         for result in results:
             print(result)
+
 
     asyncio.run(main())

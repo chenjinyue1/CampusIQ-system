@@ -2,7 +2,7 @@
 笔记管理 API 路由 —— CRUD、搜索、自动标签、内联补全、写作辅助。
 """
 import asyncio
-from fastapi import Depends, Query
+from fastapi import Depends, Query, HTTPException, status
 from fastapi.routing import APIRouter
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,16 @@ from app.services.auth_utils import get_current_user_id
 
 note_router = APIRouter(prefix="/note", tags=["note"])
 
+
+async def check_note_service_ready():
+    """检查笔记服务是否已就绪"""
+    if init_manager is None or init_manager.note_service is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="笔记服务正在初始化，请稍后重试"
+        )
+
+
 @note_router.post("/create")
 async def create_note(
         payload: NoteCreate, # 笔记创建请求模型，用于创建笔记
@@ -30,6 +40,7 @@ async def create_note(
     2. 立即返回笔记（tags/category 初始为空）
     3. 后台异步生成标签和回顾记录
     """
+    await check_note_service_ready()
     note = await init_manager.note_service.create_note(db, user_id, payload)
     return success_response(message="笔记创建成功", data=note)
 
@@ -46,6 +57,7 @@ async def list_notes(
     """
     笔记列表：分页查询，支持按分类筛选。tag 筛选在内存层完成。
     """
+    await check_note_service_ready()
     notes, total = await init_manager.note_service.list_notes(db, user_id, page, page_size, category, tag)
     return success_response(data=NoteListResponse(notes=notes, total_count=total))
 
@@ -60,6 +72,7 @@ async def search_notes(
     全文语义搜索：走 ChromaDB notes_collection 向量检索，
     返回当前用户的语义相似笔记。
     """
+    await check_note_service_ready()
     notes = await init_manager.note_service.search_notes(db, user_id, q)
     return success_response(data=NoteListResponse(notes=notes, total_count=len(notes)))
 
@@ -73,6 +86,7 @@ async def get_stats(
     获取用户笔记分类统计。
     返回各分类下的笔记数量及总数。
     """
+    await check_note_service_ready()
     stats = await init_manager.note_service.get_category_stats(db, user_id)
     return success_response(data=stats)
 
@@ -90,6 +104,7 @@ async def autocomplete(
     AI 内联补全。基于光标前上下文，调用本地 Ollama qwen3:0.8b 快速返回续写文本。
     非流式，目标延迟 300-500ms。
     """
+    await check_note_service_ready()
     result = await init_manager.note_service.autocomplete(payload.context)
     return success_response(data=result)
 
@@ -111,6 +126,7 @@ async def assist_stream(
     - expand：扩写
     - summarize：缩写
     """
+    await check_note_service_ready()
     return StreamingResponse(
         init_manager.note_service.assist_stream(payload.content, payload.action),
         media_type="text/event-stream",
@@ -131,6 +147,7 @@ async def update_note(
     """
     更新笔记：修改 title/content，content 变更时同步更新 ChromaDB 向量。
     """
+    await check_note_service_ready()
     note = await init_manager.note_service.update_note(db, note_id, user_id, payload)
     if not note:
         return success_response(message="笔记不存在")
@@ -147,6 +164,7 @@ async def delete_note(
     """
     删除笔记：联删 MySQL 记录、ChromaDB 向量、以及级联的 review_records。
     """
+    await check_note_service_ready()
     note_deleted = await init_manager.note_service.delete_note(db, note_id, user_id)
     if not note_deleted:
         return success_response(message="笔记不存在")
@@ -162,6 +180,7 @@ async def get_note(
     """
     获取笔记详情：从 MySQL 获取笔记详情。
     """
+    await check_note_service_ready()
     note = await init_manager.note_service.get_note(db, note_id, user_id)
     if not note:
         return success_response(message="笔记不存在")
@@ -178,6 +197,7 @@ async def regenerate_tags(
     """
     手动触发重新生成标签。
     """
+    await check_note_service_ready()
     note = await init_manager.note_service.get_note(db, note_id, user_id)
     if not note:
         return success_response(message="笔记不存在")
@@ -196,6 +216,7 @@ async def get_related_notes(
     获取当前笔记的语义相似笔记和知识库文档（Top 3），
     标注来源：note（笔记库）或 knowledge_base（知识库）。
     """
+    await check_note_service_ready()
     related = await init_manager.note_service.get_related_notes(db, note_id, user_id)
     return success_response(data=related)
 
@@ -209,6 +230,7 @@ async def export_note(
     """
     导出单篇笔记为 Markdown 格式纯文本。
     """
+    await check_note_service_ready()
     markdown = await init_manager.note_service.export_note_markdown(db, note_id, user_id)
     if not markdown:
         return success_response(message="笔记不存在")

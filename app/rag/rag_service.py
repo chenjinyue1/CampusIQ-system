@@ -1,9 +1,10 @@
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableLambda
 from langsmith import traceable
 from langchain_core.prompts import PromptTemplate
 
 
-from app.models.factory import chat_model
+from app.core.background_init import init_manager
 from app.rag.vector_store import VectorStoreService
 from app.utils.prompt_loader import load_rag_prompts
 from app.utils.logger_handler import logger
@@ -13,15 +14,18 @@ from app.rag.reorder_service import reorder_service
 class RagService:
     def __init__(self, user_id: str = None, thinking_callback=None):
         self.vector_store = VectorStoreService()
+        self.note_service = init_manager.note_service
         self.retriever = None
         self.user_id = user_id
-        self.thinking_callback = thinking_callback # 思考回调, 用于显示思考过程
         self.prompt_text = load_rag_prompts()
         self.prompt_template = PromptTemplate.from_template(self.prompt_text)
-        self.chat_model = chat_model
+        self.chat_model = init_manager.chat_model
         self.chain = self._init_chain()
-        self.hyde_prompt_template = PromptTemplate.from_template("基于以下问题，生成一个详细的假设性回答，我会根据你的这个假设性回答在向量数据库里检索文档：\n\n问题：{query}\n\n假设性回答：")
-        # 假设性回答, 用于生成假设性回答
+        self.hyde_prompt_template = PromptTemplate.from_template(
+            "基于以下问题，生成一个详细的假设性回答，我会根据你的这个假设性回答"
+            "在向量数据库里检索文档：\n\n问题：{query}\n\n假设性回答："
+        )
+        self.thinking_callback = thinking_callback
 
     async def initialize_retriever(self, query: str = None):
         """
@@ -34,27 +38,30 @@ class RagService:
 
             if self.thinking_callback:
                 await self.thinking_callback({
-                    "type": "thinking", # 思考, 用于显示思考过程
-                    "stage": "retrieval", # 阶段,用于显示阶段
+                    "type": "thinking",
+                    "stage": "retrieval",
                     "content": f"初始化检索器（向量权重: {weights[0]:.1f}, BM25权重: {weights[1]:.1f}）",
                     "details": {
-                        "vector_weight": weights[0], # 向量权重，用于显示向量权重
-                        "bm25_weight": weights[1] # BM25权重，用于显示BM25权重
+                        "vector_weight": weights[0],
+                        "bm25_weight": weights[1]
                     }
                 })
 
-        self.retriever = await self.vector_store.get_retriever(query, self.user_id)
+            self.retriever = await self.vector_store.get_retriever(query, self.user_id)
+
 
     def _init_chain(self):
         """初始化链"""
+        # 把自定义模型封装成Runnable，兼容|语法
+        llm_run = RunnableLambda(lambda msg: self.chat_model.invoke(msg))
         chain = (
-            self.prompt_template
-            | self.chat_model
-            | StrOutputParser()
+                self.prompt_template
+                | llm_run
+                | StrOutputParser()
         )
         return chain
 
-    @traceable # 链可追踪, 用于显示链执行过程, 可查看链执行过程
+    @traceable
     async def generate_hypothetical_document(self, query: str) -> str:
         """
         使用HyDE技术生成假设性文档
@@ -77,48 +84,39 @@ class RagService:
     @traceable
     async def retrieve_document(self, query: str) -> list:
         """使用HyDE技术 从向量数据库里检索文档"""
-        logger.info(f"【HyDE】开始检索 - user_id: {self.user_id}, query: {query}")
-
         if not self.user_id:
-            logger.warning(f"【HyDE】user_id为空，不进行任何检索。(当前user_id: {self.user_id})")
-            logger.warning("💡 提示：请确保在创建RagService时传入有效的user_id参数")
+            logger.warning("【HyDE】user_id为空，不进行任何检索")
             return []
 
         try:
             # 确保检索器已初始化，传递query参数
             if self.retriever is None:
-                logger.info(f"【HyDE】检索器未初始化，开始初始化...")
                 await self.initialize_retriever(query)
 
-            if not self.retriever:
-                logger.error(f"【HyDE】检索器初始化失败")
-                return []
-
             # 使用HyDE技术生成假设性文档
-            logger.info(f"【HyDE】当前user_id: {self.user_id}，开始处理查询: {query}")
+            logger.info(f"【HyDE】开始处理查询: {query}")
 
             if self.thinking_callback:
                 await self.thinking_callback({
                     "type": "thinking",
-                    "stage": "hyde", # 当前处理阶段,
+                    "stage": "hyde",
                     "content": f"正在基于查询「{query}」生成假设性文档..."
                 })
 
             hypothetical_doc = await self.generate_hypothetical_document(query)
 
-            # 生成假设性文档, 并保存到数据库中
             if self.thinking_callback:
                 await self.thinking_callback({
                     "type": "thinking",
                     "stage": "hyde",
-                    "content": f"假设性文档生成完成",
+                    "content": "假设性文档生成完成",
                     "details": {
                         "hypothetical_doc_preview": hypothetical_doc[:200] + "..." if len(hypothetical_doc) > 200 else hypothetical_doc
-                    } # 假设性文档, 用于预览
+                    }
                 })
 
             # 使用假设性文档进行检索
-            logger.info(f"【HyDE】使用假设性文档进行检索")
+            logger.info("【HyDE】使用假设性文档进行检索")
 
             if self.thinking_callback:
                 await self.thinking_callback({
@@ -128,35 +126,53 @@ class RagService:
                 })
 
             documents = await self.retriever.ainvoke(hypothetical_doc)
-            logger.info(f"【HyDE】已检索到 {len(documents)} 个文档")
+
+            # 同时检索笔记库
+            note_docs = []
+            try:
+                note_docs = await asyncio.to_thread(
+                    self.note_service.notes_store.similarity_search,
+                    hypothetical_doc, k=3,
+                    filter={"user_id": self.user_id}
+                )
+            except Exception as e:
+                logger.error(f"【RAG】检索笔记失败: {e}")
+
+            # 标记来源并合并（笔记在前，知识库在后）
+            for doc in documents:
+                doc.metadata["source_type"] = "knowledge_base"
+            for doc in note_docs:
+                doc.metadata["source_type"] = "note"
+            all_documents = note_docs + documents
+
+            logger.info(f"【HyDE】检索到 {len(documents)} 个知识库文档, {len(note_docs)} 个笔记文档")
 
             if self.thinking_callback:
-                doc_previews = [] # 预览, 避免发送太多数据, 只发送前10个,
-                # 遍历文档，
-                for i, doc in enumerate(documents, 1): # 从1开始，避免索引越界
-                    preview = doc.page_content[:150] + '...' if len(doc.page_content) > 150 else doc.page_content
+                doc_previews = []
+                for i, doc in enumerate(all_documents, 1):
+                    preview = doc.page_content[:150] + "..." if len(doc.page_content) > 150 else doc.page_content
+                    if doc.metadata.get("source_type") == "note":
+                        source = f"笔记《{doc.metadata.get('title', '无标题')}》"
+                    else:
+                        source = doc.metadata.get("original_filename", doc.metadata.get("source", "unknown"))
                     doc_previews.append({
                         "index": i,
                         "preview": preview,
-                        "source": doc.metadata.get("original_filename", doc.metadata.get("source", "unknown")), # 源文件名，默认为unknown
+                        "source": source,
                     })
                 await self.thinking_callback({
                     "type": "thinking",
                     "stage": "retrieval",
-                    "content": f"检索到 {len(documents)} 个相关文档",
+                    "content": f"检索到 {len(note_docs)} 篇相关笔记, {len(documents)} 篇知识库文档",
                     "details": {
                         "documents": doc_previews
                     }
                 })
 
-            return documents # 返回所有文档, 用于后续处理
+            return all_documents
         except Exception as e:
             logger.error(f"【HyDE】检索文档失败: {e}")
             return []
-
-
-
-
 
     @traceable
     async def reorder_documents(self, query: str, documents: list) -> list:
@@ -173,7 +189,7 @@ class RagService:
                 "content": f"正在对 {len(documents)} 个文档进行重排序..."
             })
 
-        result = await reorder_service.reorder_documents(query, documents, thinking_callback=self.thinking_callback)
+        result = await init_manager.reorder_service.reorder_documents(query, documents, thinking_callback=self.thinking_callback)
         if result["success"]:
             # 提取重排序后的文档内容
             reordered_documents = [doc.get("document", "") for doc in result["documents"]]
@@ -185,8 +201,7 @@ class RagService:
                     score_details.append({
                         "rank": i,
                         "score": round(doc.get("similarity", 0), 4),
-                        "preview": doc.get("document", "")[:100] + "..." if len(
-                            doc.get("document", "")) > 100 else doc.get("document", "")
+                        "preview": doc.get("document", "")[:100] + "..." if len(doc.get("document", "")) > 100 else doc.get("document", "")
                     })
                 await self.thinking_callback({
                     "type": "thinking",
@@ -209,10 +224,8 @@ class RagService:
         :param query: 查询语句
         :return: 包含文档列表和摘要的字典
         """
-        logger.info(f"【RAG】开始处理查询 - user_id: {self.user_id}, query: {query}")
-
         if not self.user_id:
-            logger.warning(f"【RAG】user_id为空，不返回任何文档。(当前user_id: {self.user_id})")
+            logger.warning("【RAG】user_id为空，不返回任何文档")
             return {
                 "documents": [],
                 "summary": "抱歉，我没有找到相关的信息。"
@@ -221,8 +234,16 @@ class RagService:
         try:
             documents = await self.retrieve_document(query)
 
-            # 提取文档内容列表
-            document_contents = [doc.page_content for doc in documents]
+            # 提取文档内容列表，附上来源标记供 LLM 引用
+            def _format_doc(doc):
+                if doc.metadata.get("source_type") == "note":
+                    title = doc.metadata.get("title", "无标题")
+                    return f"[来源：笔记《{title}》]\n{doc.page_content}"
+                else:
+                    filename = doc.metadata.get("original_filename", "知识库文档")
+                    return f"[来源：知识库《{filename}》]\n{doc.page_content}"
+
+            document_contents = [_format_doc(doc) for doc in documents]
 
             # 对文档进行重排序
             reordered_documents = await self.reorder_documents(query, document_contents)
@@ -283,7 +304,7 @@ class RagService:
 
                 # 如果只有一个文档，直接返回其摘要
                 if len(individual_summaries) == 1:
-                    logger.info(f"【RAG】生成摘要成功")
+                    logger.info("【RAG】生成摘要成功")
                     return {
                         "documents": reordered_documents,
                         "summary": individual_summaries[0]
@@ -294,7 +315,7 @@ class RagService:
                 for i, summary in enumerate(individual_summaries, 1):
                     combined_context += f"【文档{i}摘要】:{summary}\n\n"
 
-                logger.info(f"【RAG】合并摘要完成，开始生成最终总结")
+                logger.info("【RAG】合并摘要完成，开始生成最终总结")
 
                 if self.thinking_callback:
                     await self.thinking_callback({
@@ -309,13 +330,13 @@ class RagService:
                     timeout=30.0  # 最终总结超时时间
                 )
 
-                logger.info(f"【RAG】生成摘要成功")
+                logger.info("【RAG】生成摘要成功")
                 return {
                     "documents": reordered_documents,
                     "summary": final_summary
                 }
-            except asyncio.TimeoutError:
-                logger.error(f"【RAG】生成摘要超时")
+            except TimeoutError:
+                logger.error("【RAG】生成摘要超时")
                 return {
                     "documents": reordered_documents,
                     "summary": "抱歉，生成摘要超时，请稍后再试。"
@@ -327,7 +348,7 @@ class RagService:
                 "summary": "抱歉，处理您的请求时出现了错误。"
             }
 
-    @traceable # 使用装饰器, 记录函数调用信息, 并保存到数据库
+    @traceable
     async def rag_summary(self, query: str) -> str:
         """RAG 摘要"""
         result = await self.get_documents_and_summary(query)
@@ -337,18 +358,9 @@ if __name__ == '__main__':
     import asyncio
 
     async def main():
-        test_user_id = "eiXLpAR5PsfGBoMJvjXV34"
-        service = RagService(user_id=test_user_id)
+        service = RagService()
         await service.initialize_retriever()
-        result = await service.rag_summary("如何判断扫拖一体机器人是否需要更换新机？")
+        result = await service.rag_summary("小户型适合什么扫地机器人")
         print(result)
 
-        # 方式2：如果需要调试，可以打印检索的文档数量
-        documents = await service.retrieve_document("如何判断扫拖一体机器人是否需要更换新机？")
-        print(f"检索到 {len(documents)} 个文档")
-
-
     asyncio.run(main())
-
-
-

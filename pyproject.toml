@@ -3,6 +3,7 @@ name = "campusiq07"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13,<3.14"
+license = "MIT" # 表示允许的Python版本
 authors = [
     { name = "chenjinyue1", email = "3344644841@qq.com" }
 ]
@@ -41,22 +42,35 @@ dependencies = [
      "langgraph-cli[inmem]>=0.1.54",
      "pillow>=10.0.0",
      "imagehash>=4.3.0",
-     #"torch>=2.11.0",
-     #"torchvision>=0.26.0",
-     #"torchaudio>=2.11.0",
-     #"accelerate>=1.13.0",
+     "torch>=2.11.0",
+     "torchvision>=0.26.0",
+     "torchaudio>=2.11.0",
+     "accelerate>=1.13.0",
 ]
 
-## 开发依赖
-#[project.optional-dependencies]
-#dev = [
-#    "pytest>=7.0.0",
-#    "black>=24.0.0",
-#    "isort>=5.12.0",
-#    "ruff>=0.3.0",
-#]
+# 开发依赖
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=24.0.0",
+    "isort>=5.12.0",
+    "ruff>=0.3.0",
+]
+
+#[tool.ruff]
+#target-version = "py312"
+#line-length = 150
 #
-#[[tool.uv.index]]
+#[tool.ruff.lint]
+#select = ["E", "F", "I", "W"]
+#
+#[tool.ruff.lint.per-file-ignores]
+#"__init__.py" = ["F401"]
+#
+#[tool.ruff.format]
+#quote-style = "double"
+#
+#[tool.uv.index]
 #url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 #default = true
 #

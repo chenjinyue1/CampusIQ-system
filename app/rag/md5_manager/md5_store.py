@@ -10,10 +10,7 @@ from app.utils.logger_handler import logger
 
 
 class MD5Store:
-    """
-    MD5存储管理器
-    MD5 存储类，用于存储文档的 MD5 值。
-    """
+    """MD5存储管理器"""
 
     def __init__(self):
         self.base_dir = os.path.dirname(get_abs_path(chroma_conf['md5_hex_store']))
@@ -25,9 +22,9 @@ class MD5Store:
         :return: MD5存储目录路径
         """
         if user_id:
-            return os.path.join(self.base_dir, 'user_md5', user_id) # 用户目录
+            return os.path.join(self.base_dir, 'user_md5', user_id)
         else:
-            return os.path.join(self.base_dir, 'public_md5') # 公共目录
+            return os.path.join(self.base_dir, 'public_md5')
 
     async def check_md5_hex(self, md5_for_check: str, user_id: str = None) -> bool:
         """
@@ -36,40 +33,38 @@ class MD5Store:
         :param user_id: 用户ID，为None时检查公共知识库
         :return: 是否存在
         """
-        md5_dir = self._get_md5_store_dir(user_id) # 获取MD5存储目录
-        md5_path = os.path.join(md5_dir, 'md5.txt') # 获取MD5存储文件路径
+        md5_dir = self._get_md5_store_dir(user_id)
+        md5_path = os.path.join(md5_dir, 'md5.txt')
 
         if not await aio_os.path.exists(md5_dir):
-            # 如果存储文件不存在，则创建一个空的存储文件
             await aio_os.makedirs(md5_dir, exist_ok=True)
-            async with aiofiles.open(md5_path, 'w', encoding='utf-8'):
+            async with aiofiles.open(md5_path, 'w', encoding="utf-8"):
                 pass
             return False
 
         if not await aio_os.path.exists(md5_path):
-            # 如果存储文件不存在，则创建一个空的存储文件
-            async with aiofiles.open(md5_path, 'w', encoding='utf-8'):
+            async with aiofiles.open(md5_path, 'w', encoding="utf-8"):
                 pass
             return False
 
         try:
-            async with aiofiles.open(md5_path, 'r', encoding='utf-8') as f:
+            async with aiofiles.open(md5_path, encoding="utf-8") as f:
                 async for line in f:
-                    line = line.strip() # 去除行首尾空格
+                    line = line.strip()
                     if not line:
-                        continue   # 跳过空行
-                    if line.startswith('{'): # 尝试解析JSON
+                        continue
+                    if line.startswith('{'):
                         try:
-                            data = json.loads(line) # 尝试解析JSON
+                            data = json.loads(line)
                             if data.get('md5') == md5_for_check:
-                                return True # 如果MD5匹配，则返回True
-                        except json.JSONDecodeError:  # 解析失败
+                                return True
+                        except json.JSONDecodeError:
                             if line == md5_for_check:
                                 return True
-                    else: # 尝试直接匹配MD5
+                    else:
                         if line == md5_for_check:
                             return True
-            return  False # 没有匹配的MD5，返回False
+            return False
         except Exception as e:
             logger.error(f"【向量数据库】检查MD5时出错: {e}")
             return False
@@ -92,15 +87,15 @@ class MD5Store:
             'md5': md5_hex,
             'filename': filename,
             'original_filename': original_filename,
-            'upload_time': datetime.now().isoformat() # 上传时间
+            'upload_time': datetime.now().isoformat()
         }
 
-        async with aiofiles.open(md5_path, 'a', encoding='utf-8') as f:
-            await f.write(json.dumps(data, ensure_ascii=False) + '\n') # 写入JSON
+        async with aiofiles.open(md5_path, 'a', encoding="utf-8") as f:
+            await f.write(json.dumps(data, ensure_ascii=False) + '\n')
 
     def save_md5_hex_sync(self, md5_hex: str, filename: str = None, original_filename: str = None, user_id: str = None):
         """
-        同步保存md5 （用于多线程场景）
+        同步保存md5（用于多线程场景）
         :param md5_hex: 要保存的MD5值
         :param filename: 文件名（可选）
         :param original_filename: 原始文件名（可选）
@@ -116,10 +111,10 @@ class MD5Store:
             'md5': md5_hex,
             'filename': filename,
             'original_filename': original_filename,
-            'upload_time': datetime.now().isoformat() # 上传时间
+            'upload_time': datetime.now().isoformat()
         }
 
-        with open(md5_path, 'a', encoding='utf-8') as f:
+        with open(md5_path, 'a', encoding="utf-8") as f:
             f.write(json.dumps(data, ensure_ascii=False) + '\n')
 
     async def _read_md5_records(self, user_id: str = None) -> tuple:
@@ -132,32 +127,28 @@ class MD5Store:
         md5_path = os.path.join(md5_dir, 'md5.txt')
 
         if not await aio_os.path.exists(md5_path):
-            return md5_path, [] # 如果文件不存在，则返回空列表
+            return md5_path, []
 
-        records = [] # 存储记录
-        async with aiofiles.open(md5_path, 'r', encoding='utf-8') as f:
+        records = []
+        async with aiofiles.open(md5_path, encoding="utf-8") as f:
             async for line in f:
-                line = line.strip() # 去除行首尾空格
+                line = line.strip()
                 if not line:
-                    continue   # 跳过空行
-                if line.startswith('{'): # 尝试解析JSON
+                    continue
+                if line.startswith('{'):
                     try:
-                        records.append(json.loads(line)) # 尝试解析JSON, 添加到列表中
-                    except json.JSONDecodeError:  # 解析失败: # 解析失败
+                        records.append(json.loads(line))
+                    except json.JSONDecodeError:
                         records.append({
-                            'md5': line,
-                            'filename': None,
-                            'original_filename': None,
-                            'upload_time':  None
+                            'md5': line, 'filename': None,
+                            'original_filename': None, 'upload_time': None
                         })
-                else: # 尝试直接匹配MD5
+                else:
                     records.append({
-                        'md5': line,
-                        'filename': None,
-                        'original_filename': None,
-                        'upload_time':  None
-                    }) # 添加到列表中, 没有原始文件名
-        return md5_path, records # 返回文件路径和记录列表, 每条记录为dict, 包含md5, filename, original_filename, upload_time字段
+                        'md5': line, 'filename': None,
+                        'original_filename': None, 'upload_time': None
+                    })
+        return md5_path, records
 
     async def _write_md5_records(self, md5_path: str, records: list):
         """
@@ -165,18 +156,18 @@ class MD5Store:
         :param md5_path: 文件路径
         :param records: 记录列表
         """
-        if not records: # 如果记录列表为空，则删除文件及目录
+        if not records:
             md5_dir = os.path.dirname(md5_path)
-            if await aio_os.path.exists(md5_path): # 如果文件存在，则删除文件
+            if await aio_os.path.exists(md5_path):
                 await aio_os.remove(md5_path)
-            if await aio_os.path.exists(md5_dir): # 如果目录存在，则删除目录
+            if await aio_os.path.exists(md5_dir):
                 try:
                     await aio_os.rmdir(md5_dir)
                 except OSError:
                     pass
             return
 
-        async with aiofiles.open(md5_path, 'w', encoding='utf-8') as f:
+        async with aiofiles.open(md5_path, 'w', encoding="utf-8") as f:
             for record in records:
                 await f.write(json.dumps(record, ensure_ascii=False) + '\n')
 
@@ -187,12 +178,11 @@ class MD5Store:
         """
         md5_dir = self._get_md5_store_dir(user_id)
         md5_path = os.path.join(md5_dir, 'md5.txt')
-        if await aio_os.path.exists(md5_path): # 如果文件存在，则删除文件
+        if await aio_os.path.exists(md5_path):
             await aio_os.remove(md5_path)
-        if await aio_os.path.exists(md5_dir): # 如果目录存在，则删除目录
+        if await aio_os.path.exists(md5_dir):
             await aio_os.rmdir(md5_dir)
         logger.info(f"【MD5存储】已删除用户 {user_id} 的MD5记录")
-
 
     async def delete_by_filename(self, user_id: str, filename: str):
         """
@@ -201,25 +191,25 @@ class MD5Store:
         :param filename: 文件名
         :return: 被删记录的md5值，不存在返回None
         """
-        md5_path, records = await self._read_md5_records(user_id) # 读取MD5记录，返回文件路径和记录列表，
-        if not records: # 如果记录列表为空，则返回None
+        md5_path, records = await self._read_md5_records(user_id)
+        if not records:
             return None
 
-        found_md5 = None # 存储被删除的md5值, 初始化为None
-        remaining = [] # 存储剩余的记录, 用于写入新的记录文件
+        found_md5 = None
+        remaining = []
         for record in records:
-            record_filename = record.get('filename', record.get('original_filename')) # 获取文件名, 如果没有，则使用原始文件名, 如果原始文件名也没有，则使用md5值, 如果md5值也没有，则返回None
-            if record_filename == filename: # 如果文件名匹配
-                found_md5 = record.get('md5') # 获取md5值
-            else: # 如果文件名不匹配
-                remaining.append(record) # 添加到剩余的记录列表中
+            record_filename = record.get('filename', record.get('original_filename'))
+            if record_filename == filename:
+                found_md5 = record.get('md5')
+            else:
+                remaining.append(record)
 
         if found_md5 is None:
             return None
 
-        await self._write_md5_records(md5_path, remaining) # 写入新的记录文件, 剩余的记录列表
+        await self._write_md5_records(md5_path, remaining)
         logger.info(f"【MD5存储】已删除用户 {user_id} 的文件 {filename} 的MD5记录")
-        return found_md5 # 返回被删除的md5值
+        return found_md5
 
     async def delete_single_md5(self, user_id: str, md5_to_delete: str) -> bool:
         """
@@ -232,8 +222,8 @@ class MD5Store:
         if not records:
             return False
 
-        remaining = [r for r in records if r.get('md5') != md5_to_delete] # 剩余的记录列表, 用于写入新的记录文件, 排除要删除的记录
-        if len(remaining) == len(records): # 如果没有剩余的记录, 则返回失败
+        remaining = [r for r in records if r.get('md5') != md5_to_delete]
+        if len(remaining) == len(records):
             return False
 
         await self._write_md5_records(md5_path, remaining)
@@ -247,19 +237,17 @@ class MD5Store:
         :param md5_value: MD5值
         :return: MD5信息字典，不存在返回None
         """
-        _, records = await self._read_md5_records(user_id) # 读取MD5记录，返回文件路径和记录列表,，
-        # 遍历记录列表，返回第一个匹配的记录，
-        # 如果没有匹配的记录，则返回None，否则返回匹配的记录，匹配的记录包含md5, filename, original_filename, upload_time字段，匹配的记录为dict
+        _, records = await self._read_md5_records(user_id)
         for record in records:
             if record.get('md5') == md5_value:
                 return record
         return None
 
-    async def get_all_md5_info(self, user_id: str):
+    async def get_all_md5_records(self, user_id: str) -> list:
         """
-        获取所有MD5对应的文档信息
+        获取用户的所有MD5记录
         :param user_id: 用户ID
-        :return: MD5信息列表，不存在返回None
+        :return: MD5记录列表
         """
-        _, records = await self._read_md5_records(user_id) # 读取MD5记录，返回文件路径和记录列表,，
+        _, records = await self._read_md5_records(user_id)
         return records

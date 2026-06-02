@@ -9,6 +9,10 @@ from app.utils.logger_handler import logger
 class _BackgroundInitManager:
     """
     后台初始化管理器
+
+    在 FastAPI 启动后通过 start() 在后台异步初始化所有重型资源，
+    避免模块级导入阻塞 uvicorn 启动。
+    每个组件初始化完成后设置对应的 Event。
     """
     def __init__(self):
         """初始化后台初始化管理器"""
