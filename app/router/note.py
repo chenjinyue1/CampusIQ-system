@@ -136,7 +136,7 @@ async def assist_stream(
         }
     )
 
-@note_router.post("/{note_id}")
+@note_router.put("/{note_id}")
 async def update_note(
         note_id: str,
         payload: NoteUpdate,

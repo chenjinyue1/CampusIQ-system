@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 
+from app.core.background_init import init_manager
 from app.core.failed_response_register import register_exception_handlers
 from app.db.db_config import init_db, close_db
 from app.db.redis_config import connect_redis, close_redis
@@ -39,6 +40,10 @@ async def lifespan(app: FastAPI):
     # 连接Redis
     await connect_redis()
     logger.info("Redis连接初始化完成")
+
+    # 启动后台初始化（AI模型、NoteService、Reranker）
+    await init_manager.start()
+    logger.info("后台初始化任务已启动")
 
     # # 检查并重排序模型
     # check_and_download_reranker_model()
