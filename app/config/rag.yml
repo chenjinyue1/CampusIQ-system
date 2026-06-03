@@ -1,8 +1,8 @@
 ## 云端部署
 ##chat_model_name: qwen3-max
 ##embedding_model_name: text-embedding-v4
-#
-## 本地部署
-#chat_model_name: qwen2.5:7b
-#embedding_model_name: qwen3-embedding:4b
-##reranker_model_name: qwen3.5:0.8b
+
+# 本地部署
+chat_model_name: qwen2.5:7b
+embedding_model_name: qwen3-embedding:4b
+#reranker_model_name: qwen3.5:0.8b

@@ -1,3 +1,7 @@
+"""
+路径工具
+"""
+
 import os
 
 
@@ -7,9 +11,9 @@ def get_project_root() -> str:
     :return: 项目根目录路径
     """
     # 从当前文件所在目录向上两级（app/utils -> app -> backend）
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    app_dir = os.path.dirname(current_dir)
-    project_root = os.path.dirname(app_dir)
+    current_dir = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在目录, backend/app/utils
+    app_dir = os.path.dirname(current_dir) # 上一级文件所在目录, backend/app/
+    project_root = os.path.dirname(app_dir) # 上一级文件所在目录, backend/
     return project_root
 
 def get_abs_path(relative_path: str) -> str:

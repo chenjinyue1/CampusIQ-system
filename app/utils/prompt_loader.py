@@ -63,6 +63,7 @@ def load_reorder_prompts():
 
 
 def load_auto_tag_prompts():
+    """加载《笔记标签生成助手》提示词"""
     try:
         auto_tag_prompt_path = get_abs_path(prompts_conf["auto_tag_prompt_path"])
     except KeyError as e:
@@ -77,6 +78,7 @@ def load_auto_tag_prompts():
 
 
 def load_write_assistant_prompts():
+    """加载《写作助手》提示词"""
     try:
         write_assistant_prompt_path = get_abs_path(prompts_conf["write_assistant_prompt_path"])
     except KeyError as e:
@@ -90,8 +92,38 @@ def load_write_assistant_prompts():
         raise e
 
 
+def load_autocomplete_prompts():
+    """加载《写作补全助手》提示词"""
+    try:
+        autocomplete_prompt_path = get_abs_path(prompts_conf["autocomplete_prompt_path"])
+    except KeyError as e:
+        logger.error(f"[load_autocomplete_prompts]在yaml配置项中没有autocomplete_prompt_path配置项")
+        raise e
+
+    try:
+        return open(autocomplete_prompt_path, "r", encoding="utf-8").read()
+    except Exception as e:
+        logger.error(f"[load_autocomplete_prompts]出错，{str(e)}")
+        raise e
+
+def load_review_question_prompts():
+    """加载《笔记回顾助手》提示词"""
+    try:
+        review_question_prompt_path = get_abs_path(prompts_conf["review_question_prompt_path"])
+    except KeyError as e:
+        logger.error(f"[load_review_question_prompts]在yaml配置项中没有review_question_prompt_path配置项")
+        raise e
+
+    try:
+        return open(review_question_prompt_path, "r", encoding="utf-8").read()
+    except Exception as e:
+        logger.error(f"[load_review_question_prompts]出错，{str(e)}")
+        raise e
+
 
 if __name__ == '__main__':
     print(load_system_prompts())
     print(load_reorder_prompts())
     print(load_auto_tag_prompts())
+    print(load_write_assistant_prompts())
+    print(load_autocomplete_prompts())

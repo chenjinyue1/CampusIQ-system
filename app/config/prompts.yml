@@ -3,7 +3,7 @@ main_prompt_path: app/prompts/main_prompt.txt
 rag_summarize_prompt_path: app/prompts/rag_summarize.txt
 report_prompt_path: app/prompts/report_prompt.txt
 reorder_prompt_path: app/prompts/reorder_prompt.txt
-auto_tag_prompt: app/prompt/auto_tag_prompt.txt
-review_question_prompt: app/prompt/review_question_prompt.txt
-autocomplete_prompt: app/prompt/autocomplete_prompt.txt
-write_assistant_prompt: app/prompt/write_assistant_prompt.txt
+auto_tag_prompt_path: app/prompts/auto_tag_prompt.txt
+review_question_prompt_path: app/prompts/review_question_prompt.txt
+autocomplete_prompt_path: app/prompts/autocomplete_prompt.txt
+write_assistant_prompt_path: app/prompts/write_assistant_prompt.txt

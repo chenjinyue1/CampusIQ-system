@@ -1,3 +1,7 @@
+"""
+日志处理器
+"""
+
 import logging
 from app.utils.path_tool import get_abs_path
 import os
