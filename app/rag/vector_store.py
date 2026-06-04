@@ -96,8 +96,8 @@ class VectorStoreService:
         self.hybrid_retriever = HybridRetriever(self.vectors_store)
         self.document_processor = DocumentProcessor(self.vectors_store,
                                                     self.md5_store,
-                                                  self._get_embed_model())
-    # 先MD5，再检索，最后处理并获取 document，
+                                                    self._get_embed_model())
+    # 先MD5--->再检索--->最后处理并获取 document，
 
     # 先获取 embed_model，避免循环导入
     @staticmethod

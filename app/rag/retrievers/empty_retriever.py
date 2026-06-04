@@ -12,6 +12,7 @@ class EmptyRetriever(BaseRetriever):
         *,
         run_manager: CallbackManagerForRetrieverRun | None = None,
     ) -> list[Document]:
+        """始终返回空结果的异步方法"""
         return []
 
     def _get_relevant_documents(

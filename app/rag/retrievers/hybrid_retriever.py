@@ -83,13 +83,14 @@ class HybridRetriever:
         bm25_retriever = await self.get_bm25_retriever(user_id)
 
         if bm25_retriever:
-            weights = await self.get_dynamic_weights(query)
+            weights = await self.get_dynamic_weights(query) # 获取动态权重
+
             from langchain_classic.retrievers import EnsembleRetriever
             ensemble_retriever = EnsembleRetriever(
                 retrievers=[vector_retriever, bm25_retriever], # 创建混合检索器, 使用向量检索器和BM25检索器
                 weights=weights # 设置权重
-            )
-            return ensemble_retriever
+            ) # 创建混合检索器实例
+            return ensemble_retriever # 返回混合检索器实例
         else:
             return vector_retriever # 如果没有BM25检索器,则返回向量检索器
 
@@ -121,7 +122,9 @@ class HybridRetriever:
             bm25_weight = default_bm25_weight
 
         if query_words > 0: # 如果查询词数大于0,则根据查询词数调整权重,否则保持不变
+
             word_density = query_words / query_length # 查询词密度, 用于计算权重, 越长则权重越低
+
             if word_density > 0.1: # 如果查询词密度大于0.1,则将向量检索权重调低,BM25权重调高
                 bm25_weight = min(bm25_weight + 0.1, 0.7)
                 vector_weight = max(vector_weight - 0.1, 0.3)
