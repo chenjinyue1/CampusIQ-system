@@ -468,7 +468,7 @@ if __name__ == '__main__':
         await store.get_document()
 
         retriever = await store.get_retriever()
-        results = await retriever.ainvoke('扫地')
+        results = await retriever.ainvoke('扫地机器人')
         print(f"检索结果数量: {len(results)}")
         for result in results:
             print(result)
