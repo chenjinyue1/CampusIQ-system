@@ -1,3 +1,6 @@
+"""
+md5存储管理器
+"""
 import json
 import os
 from datetime import datetime

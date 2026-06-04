@@ -1,3 +1,7 @@
+"""
+创建 ChromaDB 向量数据库服务,
+提供向量数据库服务
+"""
 import asyncio
 import os
 import shutil
@@ -34,7 +38,7 @@ def _reset_chroma_db(persist_dir: str):
     """删除 Chroma 数据库目录（文件系统），同时清除内存中的缓存，达到完全重置的效果"""
     _clear_chroma_cache()
     if os.path.exists(persist_dir):
-        shutil.rmtree(persist_dir)
+        shutil.rmtree(persist_dir) # 删除 Chroma 缓存目录
         logger.info(f"已删除 Chroma 数据库目录并重置缓存: {persist_dir}")
 
 
@@ -88,12 +92,14 @@ class VectorStoreService:
             embedding_function=self._get_embed_model(),
             persist_directory=persist_dir,
         )
-        self.md5_store = MD5Store()
+        self.md5_store = MD5Store() # MD5 存储
         self.hybrid_retriever = HybridRetriever(self.vectors_store)
         self.document_processor = DocumentProcessor(self.vectors_store,
-                                                    self.md5_store,)
-                                                    #self._get_embed_model())
+                                                    self.md5_store,
+                                                  self._get_embed_model())
+    # 先MD5，再检索，最后处理并获取 document，
 
+    # 先获取 embed_model，避免循环导入
     @staticmethod
     def _get_embed_model():
         """从后台初始化管理器获取 embed_model"""

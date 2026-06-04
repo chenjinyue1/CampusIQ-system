@@ -1,3 +1,6 @@
+"""
+混合检索器（BM25 + 向量检索）
+"""
 import asyncio
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
