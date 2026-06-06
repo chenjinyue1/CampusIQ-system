@@ -101,7 +101,7 @@ async def autocomplete(
         user_id : str = Depends(get_current_user_id),
 ):
     """
-    AI 内联补全。基于光标前上下文，调用本地 Ollama qwen3:0.8b 快速返回续写文本。
+    AI 内联补全。基于光标前上下文，调用本地 Ollama qwen2.5:7b 快速返回续写文本。
     非流式，目标延迟 300-500ms。
     """
     await check_note_service_ready()

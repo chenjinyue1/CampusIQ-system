@@ -193,8 +193,9 @@ async def create_note_tool(title: str, content: str = "") -> str:
     from app.schemas.models import NoteCreate
     async with AsyncSessionLocal() as db:
         try:
+            vector_content = content if content.strip() else title # 使用标题作为向量内容
             payload = NoteCreate(title=title, content=content)
-            note = await init_manager.note_service.create_note(db, user_id, payload)
+            note = await init_manager.note_service.create_note(db, user_id, payload, vector_content=vector_content)
             return f"✅ 笔记创建成功！\n- 标题: {note.title}\n- ID: {note.id}\n- 标签和分类正在后台生成中..."
         except Exception as e:
             logger.error(f"创建笔记失败: {e}")

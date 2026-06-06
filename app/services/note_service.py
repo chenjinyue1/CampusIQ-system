@@ -10,6 +10,7 @@ from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils.logger_handler import logger
@@ -18,7 +19,7 @@ from app.models.review_record import ReviewRecord
 from app.schemas.models import NoteCreate, NoteResponse, NoteUpdate
 from app.utils.config_handler import chroma_conf
 from app.utils.path_tool import get_abs_path
-from app.utils.prompt_loader import load_auto_tag_prompts, load_write_assistant_prompts
+from app.utils.prompt_loader import load_auto_tag_prompts, load_write_assistant_prompts, load_autocomplete_prompts
 
 NOTES_COLLECTION_NAME = "notes_collection"
 
@@ -77,13 +78,18 @@ class NoteService:
             updated_at=str(note.updated_at) if note.updated_at else None,
         )
 
-    async def create_note(self, db: AsyncSession, user_id: str, payload: NoteCreate) -> NoteResponse:
+    async def create_note(self, db: AsyncSession, user_id: str, payload: NoteCreate, vector_content: str = None) -> NoteResponse:
         """
         创建笔记：
         1. MySQL 写入笔记（tags/category 暂为空）
         2. ChromaDB 写入向量
         3. 立即返回笔记 ID
         4. 后台异步任务：LLM 生成标签 + 创建回顾记录
+
+        :param db:
+        :param user_id:
+        :param payload:
+        :param vector_content: 用于向量化的内容（如果为空则使用 payload.content）
         """
         note_id = str(uuid.uuid4())
         note = Note(
@@ -98,8 +104,9 @@ class NoteService:
 
         # 向量化写入 ChromaDB
         try:
+            vector_text = vector_content if vector_content else payload.content
             doc = Document(
-                page_content=payload.content,
+                page_content=vector_text,
                 metadata={
                     "user_id": user_id,
                     "note_id": note_id,
@@ -244,10 +251,10 @@ class NoteService:
         """
         try:
             docs = await asyncio.to_thread(
-                self._notes_store.similarity_search,
-                query,
+                self._notes_store.similarity_search, # 向量检索, 返回前 top_k 个最相似的笔记, 通过 filter 过滤
+                query, # 搜索内容
                 k=top_k,
-                filter={"user_id": user_id, "doc_type": "note"},
+                filter={"$and": [{"user_id": {"$eq": user_id}}, {"doc_type": {"$eq": "note"}}]},
             )
         except Exception as e:
             logger.error(f"笔记语义搜索失败: {e}")
@@ -260,9 +267,9 @@ class NoteService:
         # 从 MySQL 获取完整笔记信息并保持向量检索的顺序
         stmt = select(Note).where(Note.id.in_(note_ids), Note.user_id == user_id)
         result = await db.execute(stmt)
-        notes_map = {n.id: n for n in result.scalars().all()}
+        notes_map = {n.id: n for n in result.scalars().all()} # 笔记ID 为 key，笔记对象为 value。  笔记对象，字典类型
 
-        sorted_notes = []
+        sorted_notes = [] # 有序笔记列表，按向量检索的顺序保存，保存笔记对象
         for nid in note_ids:
             if nid in notes_map:
                 sorted_notes.append(self._doc_to_response(notes_map[nid]))
@@ -370,6 +377,7 @@ class NoteService:
         不阻塞用户保存响应。标签延迟出现是设计意图。
         """
         try:
+            logger.info(f"【自动标签】开始处理 note_id={note_id}")
             # 加载 prompt 模板并填充笔记内容
             prompt_template = load_auto_tag_prompts()
             prompt = prompt_template.replace("{content}", content)
@@ -399,7 +407,11 @@ class NoteService:
                     .where(Note.id == note_id, Note.user_id == user_id)
                     .values(tags=tags, category=category)
                 )
-                await session.execute(stmt)
+                result = await session.execute(stmt)
+
+                if result.rowcount == 0:
+                    logger.warning(f"自动标签写入跳过：笔记不存在或已删除 note_id={note_id}, user_id={user_id}")
+                    return
 
                 # 创建回顾记录（首次间隔 1 天）
                 now = datetime.now()
@@ -416,12 +428,14 @@ class NoteService:
 
         except json.JSONDecodeError as e:
             logger.error(f"解析 LLM 标签输出失败 note_id={note_id}, raw={raw_output[:200]}, extracted={json_str[:200]}: {e}")
+        except SQLAlchemyError as e:
+            logger.error(f"自动标签数据库写入失败 note_id={note_id}: {e}")
         except Exception as e:
             logger.error(f"自动标签后台任务失败 note_id={note_id}: {e}")
 
     async def autocomplete(self, context: str) -> dict:
         """
-        AI 内联补全 —— 基于光标前上下文，调用 Ollama qwen3.5:0.8b 快速生成续写文本。
+        AI 内联补全 —— 基于光标前上下文，调用 Ollama qwen2.5:7b 快速生成续写文本。
 
         Args:
             context: 光标前的文本上下文（最多 50 字）
@@ -435,7 +449,7 @@ class NoteService:
             from app.core.background_init import init_manager
             chat_model = init_manager.chat_model
 
-            prompt_template = load_auto_tag_prompts()
+            prompt_template = load_autocomplete_prompts()
             prompt = prompt_template.format(context=context[-200:])  # 最多取最后200字
             response = await chat_model.ainvoke([HumanMessage(content=prompt)])
             completion = response.content.strip()

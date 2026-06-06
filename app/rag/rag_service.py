@@ -1,3 +1,4 @@
+import asyncio
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda
 from langsmith import traceable
@@ -8,7 +9,7 @@ from app.core.background_init import init_manager
 from app.rag.vector_store import VectorStoreService
 from app.utils.prompt_loader import load_rag_prompts
 from app.utils.logger_handler import logger
-from app.rag.reorder_service import reorder_service
+# from app.rag.reorder_service import reorder_service
 
 
 class RagService:
@@ -355,7 +356,7 @@ class RagService:
         return result.get("summary", "抱歉，处理您的请求时出现了错误。")
 
 if __name__ == '__main__':
-    import asyncio
+
 
     async def main():
         service = RagService()

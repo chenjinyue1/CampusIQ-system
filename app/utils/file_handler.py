@@ -9,7 +9,7 @@ from app.utils.logger_handler import logger
 
 from langchain_core.documents import Document
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, UnstructuredPDFLoader, \
-    UnstructuredMarkdownLoader, UnstructuredPowerPointLoader
+    UnstructuredMarkdownLoader, UnstructuredPowerPointLoader, Docx2txtLoader, UnstructuredWordDocumentLoader
 from app.utils.path_tool import get_abs_path
 
 
@@ -180,11 +180,18 @@ async def word_loader(file_path: str) -> list[Document]:
     """
     abs_file_path = get_abs_path(file_path) if not os.path.isabs(file_path) else file_path
     try:
-        loader = TextLoader(abs_file_path, encoding='utf-8')
+        # 优先使用轻量级的 Docx2txtLoader
+        loader = Docx2txtLoader(abs_file_path)
         return await asyncio.to_thread(loader.load)
     except Exception as e:
-        logger.error(f"【WORD文件加载】加载文件 {abs_file_path} 时出错: {e}")
-        return []
+        logger.error(f"【WORD文件加载】使用Docx2txtLoader加载文件 {abs_file_path} 时出错: {e}")
+        try:
+            # 降级方案处理
+            loader = UnstructuredWordDocumentLoader(abs_file_path, encoding='utf-8', strategy='fast')
+            return await asyncio.to_thread(loader.load)
+        except Exception as e2:
+            logger.error(f"【WORD文件加载】使用UnstructuredWordDocumentLoader加载文件 {abs_file_path} 时出错: {e}")
+            return []
 
 async def markdown_loader(file_path: str) -> list[Document]:
     """
@@ -208,7 +215,11 @@ async def ppt_loader(file_path: str) -> list[Document]:
     """
     abs_file_path = get_abs_path(file_path) if not os.path.isabs(file_path) else file_path
     try:
-        loader = UnstructuredPowerPointLoader(abs_file_path, mode="single")
+        loader = UnstructuredPowerPointLoader(
+            abs_file_path,
+            mode="single",
+           # strategy="fast", # 快速模式：不执行 NLP 处理，无需 spaCy
+        )
         return await asyncio.to_thread(loader.load)
     except Exception as e:
         logger.error(f"【PPT文件加载】加载文件 {abs_file_path} 时出错: {e}")
@@ -292,11 +303,16 @@ def word_loader_sync(file_path: str) -> list[Document]:
     """
     abs_file_path = get_abs_path(file_path) if not os.path.isabs(file_path) else file_path
     try:
-        loader = TextLoader(abs_file_path, encoding='utf-8')
+        loader = Docx2txtLoader(abs_file_path)
         return loader.load()
     except Exception as e:
-        logger.error(f"【WORD文件加载】加载文件 {abs_file_path} 时出错: {e}")
-        return []
+        logger.error(f"【WORD文件加载】Docx2txtLoader 失败 {abs_file_path}: {e}")
+        try:
+            loader = UnstructuredWordDocumentLoader(abs_file_path, strategy="fast")
+            return loader.load()
+        except Exception as e2:
+            logger.error(f"【WORD文件加载】UnstructuredWordDocumentLoader 失败 {abs_file_path}: {e2}")
+            return []
 
 
 def markdown_loader_sync(file_path: str) -> list[Document]:

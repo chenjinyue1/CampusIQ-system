@@ -106,6 +106,7 @@ class AgentFactory:
                 base_url=base_url,
                 streaming=True,
                 top_p=0.7,
+                model_kwargs={"enable_thinking": False}
             )
         
         else:
@@ -303,6 +304,11 @@ async def get_agent_stream_response(
                         logger.info(f"📤 [工具结果] {observation}\n")
             
             agent_result_holder["response"] = "".join(full_response) if full_response else "抱歉，我无法理解您的请求。"
+        except asyncio.CancelledError:
+            logger.warning(f"【Agent流式响应】Agent任务被取消 note_id=None")
+            agent_result_holder["error"] = "任务被取消"
+            raise
+
         except Exception as e:
             logger.error(f"【Agent流式响应】Agent执行失败: {e}", exc_info=True)
             agent_result_holder["error"] = str(e)
@@ -339,7 +345,13 @@ async def get_agent_stream_response(
                 break
         
         # 等待 agent_task 完全结束
-        await agent_task
+        try:
+            await agent_task
+        except asyncio.CancelledError:
+            logger.warning(f"【Agent流式响应】Agent任务被取消")
+        except Exception as e:
+            logger.error(f"【Agent流式响应】Agent执行错误: {str(e)}", exc_info=True)
+            agent_result_holder["error"] = str(e)
         
         if agent_result_holder["error"]:
             error_message = f"错误: {agent_result_holder['error']}"
@@ -348,7 +360,11 @@ async def get_agent_stream_response(
             return
         
         response = agent_result_holder["response"]
-        
+
+        # 防御性检查：确保 response 不为 None
+        if not response:
+            response = "抱歉，处理过程中出现未知错误，请稍后重试。"
+
         # 添加到会话历史
         await sm.session_manager.add_message(session_id, user_id, query, response)
         logger.info(f"【Agent流式响应】添加到会话历史成功")
