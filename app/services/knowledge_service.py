@@ -29,9 +29,9 @@ MAX_FOLDER_SIZE = 200 * 1024 * 1024
 @dataclass
 class ProcessingState:
     total_files: int = 0
-    total_valid: int = 0
-    sliced_count: int = 0
-    written_count: int = 0
+    total_valid: int = 0 # 总有效数
+    sliced_count: int = 0 # 已切片数
+    written_count: int = 0 # 已写入数
     success_count: int = 0
     failed_count: int = 0
     slice_success_count: int = 0
@@ -39,8 +39,10 @@ class ProcessingState:
     def current_progress(self) -> int:
         if self.total_valid == 0:
             return 0
-        slice_progress = (self.sliced_count / self.total_valid) * 60
-        write_progress = (self.written_count / self.total_valid) * 40
+        slice_progress = (self.sliced_count / self.total_valid) * 60 # 切片进度，占60%
+        write_progress = (self.written_count / self.total_valid) * 40 # 写入进度，占40%
+
+        logger.debug(f"【SSE上传】切片进度: {slice_progress:.2f}%, 写入进度: {write_progress:.2f}%")
         return int(min(99, slice_progress + write_progress))
 
 

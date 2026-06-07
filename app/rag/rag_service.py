@@ -1,3 +1,7 @@
+# thinking_callback： 思维回调
+# 使用HyDE技术生成假设性文档
+
+
 import asyncio
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableLambda

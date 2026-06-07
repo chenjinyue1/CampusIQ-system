@@ -181,7 +181,7 @@ class AsyncTextSplitter:
         # 添加最后一个片段
         optimized_chunks.append(current_chunk)
 
-        return optimized_chunks
+        return optimized_chunks # 返回优化后的文本片段列表
 
     async def _calculate_similarity(self, text1: str, text2: str) -> float:
         """

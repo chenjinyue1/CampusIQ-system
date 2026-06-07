@@ -97,7 +97,8 @@ class VectorStoreService:
         self.document_processor = DocumentProcessor(self.vectors_store,
                                                     self.md5_store,
                                                     self._get_embed_model())
-    # 先MD5--->再检索--->最后处理并获取 document，
+
+    # 先MD5--->获取 document--->切分--->存向量--->再检索
 
     # 先获取 embed_model，避免循环导入
     @staticmethod

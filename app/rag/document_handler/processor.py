@@ -1,6 +1,11 @@
 """
-文档处理器
+文档处理器,处理文档
+步骤：
+加载文档--->切分文档--->文档存储为向量
 """
+
+#  progress_callback: 进度回调
+
 import asyncio
 import os
 import tempfile
@@ -87,10 +92,10 @@ class DocumentProcessor:
                 temp_file_path = await asyncio.to_thread(
                     tempfile.NamedTemporaryFile,
                     delete=False,
-                    suffix=os.path.splitext(file.filename)[1]
-                )
+                    suffix=os.path.splitext(file.filename)[1] # 获取文件扩展名
+                ) # 创建临时文件
                 content = await file.read()
-                await asyncio.to_thread(temp_file_path.write, content)
+                await asyncio.to_thread(temp_file_path.write, content) # 写入文件，返回文件对象
                 file_paths.append(temp_file_path.name)
                 file_names[temp_file_path.name] = file.filename
         else:
@@ -107,14 +112,14 @@ class DocumentProcessor:
             if await self.md5_store.check_md5_hex(md5_hex, user_id):
                 if progress_callback:
                     await progress_callback({
-                        'step': 'skipping',
+                        'step': 'skipping', # 跳过
                         'filename': filename,
                         'message': f'文件 {filename} 已存在，跳过'
                     })
                 logger.info(f"【向量数据库】文件 {file_path} 的md5值 {md5_hex} 已存在，跳过")
                 if files:
                     try:
-                        os.unlink(file_path)
+                        os.unlink(file_path) # 删除临时文件, 如果文件不存在则忽略, 否则会报错
                     except OSError:
                         pass
                 continue
@@ -142,7 +147,7 @@ class DocumentProcessor:
                     if files:
                         try:
                             os.unlink(file_path)
-                        except Exception:
+                        except OSError:
                             pass
                     continue
 

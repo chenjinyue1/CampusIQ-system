@@ -74,7 +74,7 @@ class HybridRetriever:
         if not user_id:
             return EmptyRetriever()
 
-        filter_dict = {"user_id": user_id}
+        filter_dict = {"user_id": user_id} # 过滤用户
         vector_retriever = self.vectors_store.as_retriever(
             search_type='similarity', # 设置检索类型为相似度
             search_kwargs={'k': chroma_conf['k'], 'filter': filter_dict} # 设置向量检索器的k值,并设置过滤条件
