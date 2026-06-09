@@ -9,6 +9,7 @@ import threading
 
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 
 from app.utils.logger_handler import logger
 from app.utils.config_handler import chroma_conf
@@ -40,6 +41,29 @@ def _reset_chroma_db(persist_dir: str):
     if os.path.exists(persist_dir):
         shutil.rmtree(persist_dir) # 删除 Chroma 缓存目录
         logger.info(f"已删除 Chroma 数据库目录并重置缓存: {persist_dir}")
+
+
+class _LazyEmbedding(Embeddings):
+    """延迟加载的嵌入模型包装器
+
+    VectorStoreService 是单例，在后台初始化完成前就可能被创建。
+    直接用 init_manager.embed_model 传入 Chroma 会得到 None，
+    等 Chroma 真正调 embed_documents 时就会崩溃。
+    这个包装器把模型解析推迟到 embed 调用时，确保模型已就绪。
+    """
+
+    def _get_model(self):
+        from app.core.background_init import init_manager
+        model = init_manager.embed_model
+        if model is None:
+            raise RuntimeError("嵌入模型尚未初始化完成，请稍后重试")
+        return model
+
+    def embed_documents(self, texts):
+        return self._get_model().embed_documents(texts)
+
+    def embed_query(self, text):
+        return self._get_model().embed_query(text)
 
 
 class VectorStoreService:
