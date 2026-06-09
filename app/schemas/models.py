@@ -132,11 +132,16 @@ class NoteCreate(BaseModel):
     """创建笔记请求模型"""
     title: str            # 笔记标题
     content: str           # 笔记内容
+    category: str | None = None     # 笔记分类
+    tags: list[str] | None = None     # 笔记标签
+
 
 class NoteUpdate(BaseModel):
     """更新笔记请求模型（所有字段可选）"""
     title: str | None = None
     content: str | None = None
+    category: str | None = None
+    tags: list[str] | None = None
 
 class NoteResponse(BaseModel):
     """笔记响应模型"""

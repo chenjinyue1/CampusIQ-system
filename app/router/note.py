@@ -26,6 +26,14 @@ async def check_note_service_ready():
             detail="笔记服务正在初始化，请稍后重试"
         )
 
+async def ensure_note_service():
+    """依赖：等待 NoteService 后台初始化完成后再处理请求。"""
+    await init_manager.note_service_ready.wait()
+    return init_manager.note_service
+
+
+note_router.dependencies = [Depends(ensure_note_service)]
+
 
 @note_router.post("/create")
 async def create_note(
