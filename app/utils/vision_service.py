@@ -2,16 +2,15 @@
 视觉服务
 """
 
-import os
-import base64
 import asyncio
+import base64
+import os
 import re
 
 from langchain_core.messages import HumanMessage
 
-from app.models.factory import vision_model as default_vision_model
+from app.core.background_init import init_manager
 from app.utils.logger_handler import logger
-
 
 # 批量视觉识别模板：要求模型按固定格式输出每个页面的描述，
 # 格式为 "--- Page N ---" + 描述内容，便于后续用正则解析。
@@ -39,11 +38,20 @@ class VisionService:
     """
 
     def __init__(self, model=None):
-        self.model = model or default_vision_model
+        self._model = model
+
+    def _get_model(self):
+        if self._model is not None:
+            return self._model
+        model = init_manager.vision_model
+        if model is None:
+            raise RuntimeError("视觉模型尚未初始化完成，请稍后重试")
+        self._model = model
+        return model
 
     def _is_ollama(self) -> bool:
         """检测当前使用的模型是否为 Ollama 本地部署模型"""
-        return 'ChatOllama' in type(self.model).__name__
+        return 'ChatOllama' in type(self._get_model()).__name__
 
     def _encode_image(self, image_path: str) -> tuple[str, str]:
         """
@@ -178,8 +186,8 @@ class VisionService:
     def _dashscope_describe(self, img_b64: str, mime: str, existing_text: str) -> str:
         import dashscope
 
-        api_key = getattr(self.model, 'api_key', None) or os.getenv("ALIYUN_ACCESS_KEY_SECRET")
-        model_name = self.model.model_name
+        api_key = getattr(self._get_model(), 'api_key', None) or os.getenv("ALIYUN_API_KEY")
+        model_name = self._get_model().model_name
 
         messages = [{
             "role": "user",
@@ -199,6 +207,17 @@ class VisionService:
             logger.error("【视觉服务】DashScope 返回 None，可能是网络错误或请求超时")
             return ""
 
+        if response.status_code != 200:
+            logger.error(
+                f"【视觉服务】DashScope 返回错误，status_code: {response.status_code}, "
+                f"code: {getattr(response, 'code', '')}, message: {getattr(response, 'message', '')}"
+            )
+            return ""
+
+        if response.output is None:
+            logger.error("【视觉服务】DashScope 返回 output 为 None，可能是服务暂时不可用")
+            return ""
+
         choices = response.output.choices
         if not choices:
             logger.error("【视觉服务】DashScope 返回空 choices")
@@ -216,8 +235,8 @@ class VisionService:
     ) -> str:
         import dashscope
 
-        api_key = getattr(self.model, 'api_key', None) or os.getenv("ALIYUN_ACCESS_KEY_SECRET")
-        model_name = self.model.model_name
+        api_key = getattr(self._get_model(), 'api_key', None) or os.getenv("ALIYUN_API_KEY")
+        model_name = self._get_model().model_name
 
         prompt = self._build_batch_prompt([
             {"page": pn, "text": txt}
@@ -238,6 +257,17 @@ class VisionService:
 
         if response is None:
             logger.error("【视觉服务·批量】DashScope 返回 None，可能是网络错误或请求超时")
+            return ""
+
+        if response.status_code != 200:
+            logger.error(
+                f"【视觉服务·批量】DashScope 返回错误，status_code: {response.status_code}, "
+                f"code: {getattr(response, 'code', '')}, message: {getattr(response, 'message', '')}"
+            )
+            return ""
+
+        if response.output is None:
+            logger.error("【视觉服务·批量】DashScope 返回 output 为 None，可能是服务暂时不可用")
             return ""
 
         choices = response.output.choices
@@ -262,7 +292,7 @@ class VisionService:
             if self._is_ollama():
                 # Ollama：使用 LangChain 的 ChatOllama，支持多模态 HumanMessage
                 message = self._build_message_from_b64(img_b64, mime, existing_text)
-                response = await self.model.ainvoke([message])
+                response = await self._get_model().ainvoke([message])
                 return str(response.content)
             else:
                 # 阿里云百炼：DashScope 的 API 不兼容 LangChain 的 HumanMessage 格式，
@@ -285,7 +315,7 @@ class VisionService:
 
             if self._is_ollama():
                 message = self._build_message_from_b64(img_b64, mime, existing_text)
-                response = self.model.invoke([message])
+                response = self._get_model().invoke([message])
                 return str(response.content)
             else:
                 return self._dashscope_describe(img_b64, mime, existing_text)
@@ -317,7 +347,7 @@ class VisionService:
 
             if self._is_ollama():
                 message = self._build_batch_message_from_b64(images_info, page_numbers)
-                response = await self.model.ainvoke([message])
+                response = await self._get_model().ainvoke([message])
                 raw_text = str(response.content)
             else:
                 raw_text = await asyncio.to_thread(
@@ -358,7 +388,7 @@ class VisionService:
 
             if self._is_ollama():
                 message = self._build_batch_message_from_b64(images_info, page_numbers)
-                response = self.model.invoke([message])
+                response = self._get_model().invoke([message])
                 raw_text = str(response.content)
             else:
                 raw_text = self._dashscope_describe_batch(images_info, page_numbers)
@@ -379,8 +409,8 @@ class VisionService:
         （如页眉、背景图），通过去重可以避免重复调用视觉模型，节省成本和延迟。
         """
         try:
-            from PIL import Image
             import imagehash
+            from PIL import Image
             with Image.open(image_path) as img:
                 return str(imagehash.phash(img))
         except ImportError:
