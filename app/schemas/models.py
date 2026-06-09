@@ -185,3 +185,15 @@ class PageRequest(BaseModel):
     page_size: int = 20
     category: str | None = None
     tag: str | None = None
+
+
+class BatchIdsRequest(BaseModel):
+    """批量操作请求模型（按 ID 列表）"""
+    ids: list[str]
+
+
+class BatchCategoryRequest(BaseModel):
+    """批量更新分类请求模型"""
+    ids: list[str]
+    category: str
+

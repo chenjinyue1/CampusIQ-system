@@ -6,13 +6,13 @@ from fastapi import Depends, Query, HTTPException, status
 from fastapi.routing import APIRouter
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 
 from app.core.background_init import init_manager
 from app.core.rate_limit import rate_limit
 from app.core.success_response import success_response
 from app.db.db_config import get_db
-from app.schemas.models import NoteCreate, NoteListResponse, NoteUpdate
+from app.schemas.models import NoteCreate, NoteListResponse, NoteUpdate, BatchCategoryRequest, BatchIdsRequest
 from app.services.auth_utils import get_current_user_id
 
 note_router = APIRouter(prefix="/note", tags=["note"])
@@ -84,6 +84,58 @@ async def search_notes(
     notes = await init_manager.note_service.search_notes(db, user_id, q)
     return success_response(data=NoteListResponse(notes=notes, total_count=len(notes)))
 
+@note_router.post("/batch/delete")
+async def batch_delete_notes(
+    payload: BatchIdsRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(limit=10, window=60)),
+):
+    """
+    批量删除笔记：按 ID 列表删除笔记及其向量。
+    """
+    deleted = await init_manager.note_service.batch_delete_notes(db, user_id, payload.ids)
+    return success_response(message=f"成功删除 {deleted} 篇笔记")
+
+
+@note_router.post("/batch/download")
+async def batch_download_notes(
+    payload: BatchIdsRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(limit=5, window=60)),
+):
+    """
+    批量下载笔记为 ZIP 压缩包（内含 .md 文件）。
+    """
+    from urllib.parse import quote
+    from datetime import datetime
+
+    zip_bytes = await init_manager.note_service.batch_export_zip(db, user_id, payload.ids)
+    date_str = datetime.now().strftime("%Y%m%d")
+    filename = f"notes_{date_str}.zip"
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}",
+        }
+    )
+
+
+@note_router.put("/batch/category")
+async def batch_update_category(
+    payload: BatchCategoryRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(limit=10, window=60)),
+):
+    """
+    批量更新笔记分类。
+    """
+    updated = await init_manager.note_service.batch_update_category(db, user_id, payload.ids, payload.category)
+    return success_response(message=f"成功更新 {updated} 篇笔记的分类")
+
 
 @note_router.get("/stats")
 async def get_stats(
@@ -97,6 +149,21 @@ async def get_stats(
     await check_note_service_ready()
     stats = await init_manager.note_service.get_category_stats(db, user_id)
     return success_response(data=stats)
+
+
+@note_router.delete("/category/{category}")
+async def delete_category(
+    category: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit(limit=5, window=60)),
+):
+    """
+    删除某个分类及其下所有笔记。
+    返回被删除的笔记数量。
+    """
+    deleted = await init_manager.note_service.delete_category(db, user_id, category)
+    return success_response(data={"deleted_count": deleted}, message=f"成功删除分类「{category}」及其 {deleted} 篇笔记")
 
 
 class AutocompleteRequest(BaseModel):
