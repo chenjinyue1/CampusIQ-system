@@ -52,7 +52,7 @@ async def rag_summary_tools(query: str, user_id: str = None) -> str:
     for i, doc in enumerate(documents, 1):
         formatted_result += f"{i}. {doc}\n"
 
-    return formatted_result
+    return formatted_result # 返回格式化结果
 
 
 

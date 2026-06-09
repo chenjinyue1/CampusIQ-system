@@ -1,3 +1,26 @@
+"""
+ 数据库配置模块
+"""
+
+"""
+【模块功能】：MySQL异步数据库连接管理
+
+【小白视角解释】：
+这是系统的"档案室管理员"，负责：
+1. 建立和管理数据库连接池（就像多个电话线路）
+2. 提供异步会话，支持高并发访问
+3. 自动创建数据表结构
+4. 优雅关闭连接，避免资源泄漏
+
+【使用的技术】：
+- SQLAlchemy Async: Python异步ORM框架
+- aiomysql: MySQL异步驱动
+- 连接池(pool_size=10, max_overflow=20): 复用连接，提升性能
+- 异步会话工厂: 线程安全的数据库操作
+- 事务管理: 自动提交/回滚，保证数据一致性
+"""
+
+
 import os
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine

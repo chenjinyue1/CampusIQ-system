@@ -1,3 +1,31 @@
+"""
+Agent智能代理模块
+
+# payload: 有效载荷
+# AgentExecutor: 代理执行器
+"""
+
+"""
+【模块功能】：智能代理系统，实现工具调用和多轮对话
+
+【小白视角解释】：
+这是系统的"助手管家"，像一个聪明的秘书：
+1. 理解用户意图，决定是否需要调用工具
+2. 可以调用各种工具：查天气、查时间、搜索笔记、生成报告等
+3. 支持流式输出，边思考边回答，用户体验更好
+4. 记住对话历史，支持上下文关联的多轮对话
+
+【使用的技术】：
+- LangChain Agent: 智能代理框架，自动决策工具调用
+- 工具调用(Tool Calling): LLM主动调用外部工具获取信息
+- SSE (Server-Sent Events): 服务器推送技术，实现实时流式输出
+- 异步任务(asyncio.create_task): 后台执行耗时操作不阻塞主流程
+- 工厂模式(AgentFactory): 每次创建全新实例，避免全局状态污染
+- 中间件机制: 可扩展的请求处理管道
+- 会话管理: MySQL持久化存储对话历史
+"""
+
+
 import os
 import json
 import asyncio
@@ -242,7 +270,7 @@ async def get_agent_response(
             "steps": []
         }
 
-@traceable
+@traceable # 可追溯的，
 async def get_agent_stream_response(
         query: str,
         session_id: str,
@@ -263,7 +291,15 @@ async def get_agent_stream_response(
     thinking_queue = asyncio.Queue() # 思考过程队列
     agent_result_holder = {"response": None, "error": None} # 结果保存, 用于保存结果
     agent_done = asyncio.Event() # 任务完成事件
-    
+
+    # 创建 Agent，并设置回调，并将结果保存到 holder，并结束任务，避免阻塞
+    """
+    thinking_queue:
+    agent_result_holder:
+    agent_done: 
+    """
+
+    # 思考过程回调，保存到队列，推送给前端， 避免阻塞
     async def thinking_callback(data: dict):
         """思考过程回调函数，将事件放入队列"""
         logger.info(f"【思考过程】{data.get('stage', 'unknown')}: {data.get('content', '')}")

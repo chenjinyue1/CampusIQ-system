@@ -1,3 +1,27 @@
+"""
+ Redis缓存模块
+"""
+
+"""
+【模块功能】：Redis缓存管理，提升系统性能
+
+【小白视角解释】：
+这是系统的"临时储物柜"，作用是：
+1. 缓存计算结果，避免重复计算（比如频繁查询的数据）
+2. 支持自动过期，防止数据过时
+3. 装饰器模式：一行代码就能给函数加缓存
+4. 支持JSON和字符串两种缓存格式
+
+【使用的技术】：
+- Redis: 高性能内存数据库
+- 泛型编程(Generic[T]): 类型安全的缓存操作
+- 装饰器模式(@cache_with_redis): AOP切面编程
+- 自动序列化: 支持复杂对象缓存
+- TTL过期机制: 自动清理过期缓存
+- 模式匹配删除: 批量清理相关缓存
+"""
+
+
 from typing import TypeVar, Generic
 from functools import wraps
 from collections.abc import Callable

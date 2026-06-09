@@ -1,3 +1,24 @@
+"""
+主入口模块
+"""
+
+"""
+【模块功能】：应用启动入口，负责初始化所有核心组件
+
+【小白视角解释】：
+这是整个系统的"大门"，就像商场的总入口一样。当系统启动时，它会：
+1. 打开数据库连接（MySQL）- 就像打开仓库门
+2. 连接Redis缓存 - 就像准备临时储物柜
+3. 加载AI模型 - 就像请专家到岗
+4. 注册所有API接口 - 就像开设各个服务窗口
+
+【使用的技术】：
+- FastAPI: Python现代Web框架，提供异步支持
+- 生命周期管理(lifespan): 优雅启动和关闭资源
+- CORS中间件: 允许前端跨域访问
+- 限流中间件: 防止恶意请求打垮系统
+"""
+
 import time
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
