@@ -245,7 +245,7 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 
 | 技术 | 说明 |
 |------|------|
-| Vue 3 | 现代化前端框架 |
+| TypeScript+React | 现代化前端框架 |
 | Vite | 极速构建工具 |
 | Vue Router | 路由管理 |
 | Pinia | 状态管理 |
@@ -267,7 +267,7 @@ separators: ["\n\n", "\n", "。", "！", "？", "!", "?", " ", ""]
 │   ├── data/                 # 数据存储目录
 │   ├── main.py               # 应用入口文件
 │   └── requirements.txt      # 后端依赖列表
-├── front/                    # Vue 前端项目
+├── front/                    # Ts 前端项目
 │   ├── src/                  # 源代码
 │   ├── public/               # 静态资源
 │   └── package.json          # 前端依赖配置
